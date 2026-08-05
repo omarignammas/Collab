@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: projectii-backend
+    runtime: docker
+    dockerfilePath: ./backendProjecty/Dockerfile
+    dockerContext: ./backendProjecty
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      # Point this at a managed Postgres instance (Render Postgres, Supabase, Neon, etc.)
+      # Format: jdbc:postgresql://<host>:<port>/<database>
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      # Render generates a strong random secret on first deploy — never hardcoded in git
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: "86400000"
+      # The deployed Netlify frontend origin, e.g. https://projectii.netlify.app
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false

@@ -1,0 +1,13 @@
+[build]
+  base = "frontendProjecty"
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Client-side routing (React Router) — any unmatched path falls back to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,13 @@
+# Backend (Spring Boot)
+backendProjecty/target/
+backendProjecty/.idea/
+backendProjecty/*.iml
+
+# Frontend (Angular / React)
+frontendProjecty/node_modules/
+frontendProjecty/dist/
+frontendProjecty/.angular/
+
+# Global
+.env
+.DS_Store

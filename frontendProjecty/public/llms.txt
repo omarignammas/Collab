@@ -1,0 +1,17 @@
+# Projectii
+
+> A coursework workspace for students: courses and tasks organized by term, a calendar, a drag-and-drop Kanban board, notes, and synchronized Pomodoro Focus Rooms with friends.
+
+Projectii started as a generic project/task manager and became a student-focused study tool. It's free to use — create a course, break it into tasks, and track it automatically as you go.
+
+## Pages
+
+- [Home](https://tryprojectii.netlify.app/): product overview, feature tour, and screenshots.
+- [Sign up](https://tryprojectii.netlify.app/register): create a free account.
+- [Log in](https://tryprojectii.netlify.app/login): sign in to an existing account.
+- [Terms of Use](https://tryprojectii.netlify.app/terms)
+- [Privacy Policy](https://tryprojectii.netlify.app/privacy)
+
+## Source
+
+- [GitHub repository](https://github.com/omarignammas/Projectii): full source code, backend (Spring Boot) and frontend (React).

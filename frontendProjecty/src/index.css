@@ -1,0 +1,245 @@
+/* System sans stack only — no web font to load, so no <link> needed in index.html. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 30% 98%;
+    --foreground: 20 10% 12%;
+    --card: 40 33% 99%;
+    --card-foreground: 20 10% 12%;
+    --popover: 40 33% 99%;
+    --popover-foreground: 20 10% 12%;
+    --primary: 16 47% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 38 18% 94%;
+    --secondary-foreground: 20 12% 18%;
+    --muted: 38 18% 94%;
+    --muted-foreground: 30 8% 44%;
+    --accent: 34 22% 92%;
+    --accent-foreground: 20 12% 18%;
+    --destructive: 6 70% 50%;
+    --destructive-foreground: 30 40% 99%;
+    --border: 35 16% 87%;
+    --input: 35 16% 87%;
+    --ring: 16 47% 54%;
+    --radius: 0.875rem;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 262 83% 66%;
+    --chart-3: 158 64% 42%;
+    --chart-4: 32 95% 52%;
+    --chart-5: 0 72% 51%;
+
+    /* One unified brand accent (warm terracotta) for every module/page scope */
+    --accent-amber: 16 47% 54%;
+    --accent-blue: 16 47% 54%;
+    --accent-purple: 16 47% 54%;
+    --accent-coral: 16 47% 54%;
+    --accent-teal: 16 47% 54%;
+
+    /* Categorical chart palette (validated: scripts/validate_palette.js — hues left
+       untouched intentionally, only the neutral gridline/muted tones are re-warmed) */
+    --chart-cat-1: 213 66% 51%;
+    --chart-cat-2: 18 82% 55%;
+    --chart-cat-3: 160 79% 37%;
+    --chart-cat-4: 38 100% 46%;
+    --chart-cat-5: 337 66% 74%;
+    --chart-cat-6: 120 100% 26%;
+    --chart-cat-7: 249 43% 45%;
+    --chart-cat-8: 1 74% 58%;
+    --chart-gridline: 35 16% 87%;
+    --chart-muted: 30 8% 50%;
+
+    /* Status pills */
+    --status-not-started-bg: 35 12% 90%;
+    --status-not-started-fg: 30 8% 40%;
+    --status-in-progress-bg: 208 55% 92%;
+    --status-in-progress-fg: 208 70% 38%;
+    --status-done-bg: 150 45% 90%;
+    --status-done-fg: 153 55% 28%;
+    --status-overdue-bg: 10 55% 93%;
+    --status-overdue-fg: 10 70% 42%;
+
+    /* Priority pills */
+    --priority-low-bg: 207 35% 91%;
+    --priority-low-fg: 207 50% 38%;
+    --priority-medium-bg: 38 55% 89%;
+    --priority-medium-fg: 38 65% 33%;
+    --priority-high-bg: 8 50% 92%;
+    --priority-high-fg: 8 65% 43%;
+  }
+
+  .dark {
+    --background: 30 6% 8%;
+    --foreground: 40 15% 92%;
+    --card: 30 6% 12%;
+    --card-foreground: 40 15% 92%;
+    --popover: 30 6% 12%;
+    --popover-foreground: 40 15% 92%;
+    --primary: 16 75% 66%;
+    --primary-foreground: 20 40% 12%;
+    --secondary: 30 5% 16%;
+    --secondary-foreground: 40 10% 90%;
+    --muted: 30 5% 15%;
+    --muted-foreground: 35 5% 60%;
+    --accent: 30 5% 17%;
+    --accent-foreground: 40 10% 92%;
+    --destructive: 6 65% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 30 5% 20%;
+    --input: 30 5% 20%;
+    --ring: 16 75% 66%;
+
+    --chart-1: 217 91% 65%;
+    --chart-2: 262 83% 70%;
+    --chart-3: 158 64% 52%;
+    --chart-4: 32 95% 58%;
+    --chart-5: 0 72% 60%;
+
+    /* One unified brand accent (warm terracotta) for every module/page scope */
+    --accent-amber: 16 75% 66%;
+    --accent-blue: 16 75% 66%;
+    --accent-purple: 16 75% 66%;
+    --accent-coral: 16 75% 66%;
+    --accent-teal: 16 75% 66%;
+
+    /* Categorical chart palette (validated: scripts/validate_palette.js) */
+    --chart-cat-1: 213 74% 61%;
+    --chart-cat-2: 16 68% 52%;
+    --chart-cat-3: 160 71% 34%;
+    --chart-cat-4: 35 100% 40%;
+    --chart-cat-5: 337 55% 60%;
+    --chart-cat-6: 120 100% 26%;
+    --chart-cat-7: 243 74% 76%;
+    --chart-cat-8: 0 74% 68%;
+    --chart-gridline: 30 5% 20%;
+    --chart-muted: 35 5% 60%;
+
+    --status-not-started-bg: 30 5% 18%;
+    --status-not-started-fg: 35 5% 62%;
+    --status-in-progress-bg: 214 45% 22%;
+    --status-in-progress-fg: 208 70% 65%;
+    --status-done-bg: 150 38% 18%;
+    --status-done-fg: 153 55% 58%;
+    --status-overdue-bg: 10 40% 19%;
+    --status-overdue-fg: 10 70% 63%;
+
+    --priority-low-bg: 207 22% 19%;
+    --priority-low-fg: 207 50% 68%;
+    --priority-medium-bg: 38 30% 18%;
+    --priority-medium-fg: 40 70% 62%;
+    --priority-high-bg: 8 30% 18%;
+    --priority-high-fg: 8 65% 64%;
+  }
+
+  /* Per-module accent scopes (kept as a mechanism — every scope currently
+     resolves to the same warm terracotta, same as before the redesign) */
+  .accent-amber { --primary: var(--accent-amber); --ring: var(--accent-amber); }
+  .accent-blue { --primary: var(--accent-blue); --ring: var(--accent-blue); }
+  .accent-purple { --primary: var(--accent-purple); --ring: var(--accent-purple); }
+  .accent-coral { --primary: var(--accent-coral); --ring: var(--accent-coral); }
+  .accent-teal { --primary: var(--accent-teal); --ring: var(--accent-teal); }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    @apply bg-background;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', ui-sans-serif,
+      system-ui, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  ::selection {
+    @apply bg-primary/30;
+  }
+}
+
+@layer utilities {
+  .font-numeric {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, 'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  }
+
+  /* Bracketed eyebrow label — write the brackets in the JSX text itself, e.g. "[ THE ARENA ]" */
+  .eyebrow-label {
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Icon + lowercase bold section header, e.g. "🎓 instructors" */
+  .section-header {
+    @apply flex items-center gap-2 text-[15px] font-semibold text-foreground;
+  }
+
+  /* Colored underline accent beneath a page title */
+  .title-underline {
+    @apply mt-3 h-[3px] w-14 rounded-full bg-primary;
+  }
+
+  /* Icon + big lowercase-style page hero title */
+  .hero-icon {
+    @apply flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary;
+  }
+
+  .pill-not-started { background-color: hsl(var(--status-not-started-bg)); color: hsl(var(--status-not-started-fg)); }
+  .pill-in-progress { background-color: hsl(var(--status-in-progress-bg)); color: hsl(var(--status-in-progress-fg)); }
+  .pill-done { background-color: hsl(var(--status-done-bg)); color: hsl(var(--status-done-fg)); }
+  .pill-overdue { background-color: hsl(var(--status-overdue-bg)); color: hsl(var(--status-overdue-fg)); }
+
+  .pill-priority-low { background-color: hsl(var(--priority-low-bg)); color: hsl(var(--priority-low-fg)); }
+  .pill-priority-medium { background-color: hsl(var(--priority-medium-bg)); color: hsl(var(--priority-medium-fg)); }
+  .pill-priority-high { background-color: hsl(var(--priority-high-bg)); color: hsl(var(--priority-high-fg)); }
+
+  /* Thin, unobtrusive scrollbar for message/list panes that scroll internally */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+
+  /* Slow ambient drift for the hero's background blobs — two offset paths so
+     three blobs never end up moving in lockstep even at the same duration. */
+  @keyframes blob-float-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(5%, -6%) scale(1.08); }
+    66% { transform: translate(-4%, 3%) scale(0.94); }
+  }
+  @keyframes blob-float-b {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-6%, 5%) scale(1.1); }
+  }
+  .animate-blob-a {
+    animation: blob-float-a 16s ease-in-out infinite;
+  }
+  .animate-blob-b {
+    animation: blob-float-b 20s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob-a,
+  .animate-blob-b {
+    animation: none;
+  }
+}

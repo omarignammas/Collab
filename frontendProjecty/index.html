@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/image.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#161413" />
+
+    <title>Collab — Run your coursework without the spreadsheet</title>
+    <meta
+      name="description"
+      content="Collab is a free coursework workspace for students: courses and tasks by term, a calendar, a drag-and-drop Kanban board, and synchronized Pomodoro Focus Rooms with friends."
+    />
+    <link rel="canonical" href="https://tryprojectii.netlify.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Collab" />
+    <meta property="og:title" content="Collab — Run your coursework without the spreadsheet" />
+    <meta
+      property="og:description"
+      content="Courses and tasks by term, a calendar, a drag-and-drop Kanban board, and synchronized Pomodoro Focus Rooms with friends. Free to use."
+    />
+    <meta property="og:url" content="https://tryprojectii.netlify.app/" />
+    <meta property="og:image" content="https://tryprojectii.netlify.app/image.png" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Collab — Run your coursework without the spreadsheet" />
+    <meta
+      name="twitter:description"
+      content="Courses and tasks by term, a calendar, a drag-and-drop Kanban board, and synchronized Pomodoro Focus Rooms with friends."
+    />
+    <meta name="twitter:image" content="https://tryprojectii.netlify.app/image.png" />
+
+    <!-- Body font is the OS system sans stack (see index.css body rule) — no
+         web font to load, so no external font request delays first paint. -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Radix portal target, kept as a sibling of #root (not a descendant)
+         so it's outside any zoom AppShell applies to its own subtree — see
+         src/lib/radixPortalRoot.js for why. -->
+    <div id="radix-portal-root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
