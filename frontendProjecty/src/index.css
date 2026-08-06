@@ -235,11 +235,22 @@
   .animate-blob-b {
     animation: blob-float-b 20s ease-in-out infinite;
   }
+
+  /* Draws the curved accent line under the hero's rotating word on each swap —
+     stroke-dashoffset animating to 0 reads as the line being traced in, not just faded. */
+  @keyframes draw-underline {
+    from { stroke-dashoffset: 120; }
+    to { stroke-dashoffset: 0; }
+  }
+  .animate-draw-underline {
+    animation: draw-underline 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-blob-a,
-  .animate-blob-b {
+  .animate-blob-b,
+  .animate-draw-underline {
     animation: none;
   }
 }

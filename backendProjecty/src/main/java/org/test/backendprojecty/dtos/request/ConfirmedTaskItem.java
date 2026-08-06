@@ -22,6 +22,7 @@ public class ConfirmedTaskItem {
     private String title;
 
     private String description;
+    private Integer estimatedMinutes;
     private LocalDate dueDate;
     private TaskPriority priority;
     private TaskType type;

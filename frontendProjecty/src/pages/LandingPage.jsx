@@ -16,6 +16,8 @@ import {
   X,
   Sparkles,
   Timer,
+  Apple,
+  AppWindow,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../hooks/useAuth';
@@ -25,6 +27,7 @@ import CollaborateShowcase from '../components/landing/CollaborateShowcase';
 import AiReportShowcase from '../components/landing/AiReportShowcase';
 import SummaryQuizShowcase from '../components/landing/SummaryQuizShowcase';
 import StepsTimeline from '../components/landing/StepsTimeline';
+import DesktopShowcase from '../components/landing/DesktopShowcase';
 import RotatingWord from '../components/landing/RotatingWord';
 import { AiChatAnimation, NotesAnimation, TasksBoardAnimation, RoadmapAnimation } from '../components/landing/FeatureAnimations';
 import HeroNotifications from '../components/landing/HeroNotifications';
@@ -37,12 +40,33 @@ const NAV_LINKS = [
   { href: '#workspace', label: 'Workspace' },
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'Process' },
+  { href: '#desktop', label: 'Desktop' },
+];
+
+const DESKTOP_PLATFORMS = [
+  {
+    icon: Apple,
+    name: 'macOS',
+    detail: 'Menu-bar tray with a live countdown, a translucent popover widget, and native notifications.',
+  },
+  {
+    icon: AppWindow,
+    name: 'Windows',
+    detail: 'The same tray icon, popover widget, and notifications — one shared core, full parity.',
+  },
 ];
 
 // Kept to close-to-identical character length on purpose — the rotating swiper swaps
 // these in place, and same-length words mean the swap never looks lopsided mid-transition.
 const HERO_AUDIENCE_WORDS = ['study groups', 'class cohorts', 'bootcamp crews', 'founder teams'];
 const WORKSPACE_WORDS = ['your terms', 'your rules', 'your speed', 'your plans'];
+const SCREENS_WORDS = ['the work', 'the grind', 'the sprint', 'the deadline'];
+const FOCUS_WORDS = ['focus', 'sync', 'flow', 'rhythm'];
+const AI_OUTPUT_WORDS = ['a summary', 'a report', 'a diagram', 'a quiz'];
+const BUSYWORK_WORDS = ['the busywork', 'the grunt work', 'the boring parts', 'the heavy lifting'];
+const ROADMAP_WORDS = ['full roadmap', 'real plan', 'finished plan', 'shipped result'];
+const CTA_WORDS = ['today', 'right now', 'this week', 'tonight'];
+const DESKTOP_WORDS = ['desktop', 'menu bar', 'dock', 'taskbar'];
 
 const HERO_CAPABILITIES = [
   { icon: Sparkles, label: 'AI-assisted chat & summaries' },
@@ -117,15 +141,9 @@ export const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Nav — flush with the page at the top, becomes a floating inset card once scrolled */}
-      <div className={`sticky top-0 z-40 transition-[padding] duration-300 ${isScrolled ? 'px-3 pt-3 sm:px-6' : 'px-0 pt-0'}`}>
-        <nav
-          className={`mx-auto flex items-center justify-between backdrop-blur-md transition-all duration-300 ${
-            isScrolled
-              ? 'max-w-5xl rounded-2xl border border-border/80 bg-background/95 px-4 py-3 shadow-lg shadow-black/10'
-              : 'max-w-none border-b border-border/80 bg-background/90 px-4 py-4 sm:px-6 md:px-10'
-          }`}
-        >
+      {/* Nav — always floating rounded */}
+      <div className="sticky top-0 z-40 px-3 pb-3 sm:px-6">
+        <nav className="mx-auto flex max-w-5xl items-center justify-between rounded-2xl border border-border/80 bg-background/95 px-4 py-3 backdrop-blur-md shadow-lg shadow-black/10 transition-all duration-300">
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-foreground">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
               <FolderKanban className="h-4 w-4" />
@@ -235,7 +253,7 @@ export const LandingPage = () => {
 
             <h1 className="animate-in fade-in slide-in-from-bottom-3 text-balance text-4xl font-bold leading-tight text-foreground duration-700 [animation-delay:100ms] [animation-fill-mode:backwards] sm:text-5xl md:text-6xl">
               The coworking layer for{' '}
-              <span className="text-neon-blue">
+              <span className="text-primary">
                 <RotatingWord words={HERO_AUDIENCE_WORDS} />.
               </span>
             </h1>
@@ -289,7 +307,7 @@ export const LandingPage = () => {
           <Reveal className="mb-10 text-center">
             <p className="eyebrow-label mx-auto mb-4 w-fit">[ the app ]</p>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
-              Every screen, <span className="text-neon-blue">built for the work</span>
+              Every screen, built for <span className="text-primary"><RotatingWord words={SCREENS_WORDS} />.</span>
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               A quick look around — this is what you'll actually be using.
@@ -307,7 +325,7 @@ export const LandingPage = () => {
           <Reveal className="mb-10 text-center">
             <p className="eyebrow-label mx-auto mb-4 w-fit">[ together ]</p>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
-              Bring <span className="text-neon-blue">friends</span> into focus
+              Bring friends into <span className="text-primary"><RotatingWord words={FOCUS_WORDS} />.</span>
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               Invite a friend to a Focus Room and they get a real-time notification the moment you do.
@@ -325,7 +343,7 @@ export const LandingPage = () => {
           <Reveal className="mb-10 text-center">
             <p className="eyebrow-label mx-auto mb-4 w-fit">[ ai ]</p>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
-              Your session, <span className="text-neon-blue">summarized for you</span>
+              Your session, turned into <span className="text-primary"><RotatingWord words={AI_OUTPUT_WORDS} />.</span>
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               Chat, take notes, focus together, or upload a course file — AI turns any of it into a clean report,
@@ -356,7 +374,7 @@ export const LandingPage = () => {
           <Reveal>
             <p className="eyebrow-label mb-4">[ the workspace ]</p>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
-              Real work on <span className="text-neon-blue"><RotatingWord words={WORKSPACE_WORDS} />.</span>
+              Real work on <span className="text-primary"><RotatingWord words={WORKSPACE_WORDS} />.</span>
             </h2>
             <p className="mt-3 max-w-xl text-muted-foreground">
               A taste of what the dashboard looks like day to day — the rest is in the app.
@@ -408,7 +426,7 @@ export const LandingPage = () => {
           <Reveal>
             <p className="eyebrow-label mb-4">[ features ]</p>
             <h2 className="mb-3 text-3xl font-bold text-foreground sm:text-4xl">
-              AI that does <span className="text-neon-blue">the busywork</span>
+              AI that does <span className="text-primary"><RotatingWord words={BUSYWORK_WORDS} />.</span>
             </h2>
             <p className="mb-14 max-w-xl text-muted-foreground">
               Not a chatbot bolted on the side — it's in the chat, the notes, and the planning, wherever the work already happens.
@@ -440,7 +458,7 @@ export const LandingPage = () => {
           <Reveal>
             <p className="eyebrow-label mb-4">[ process ]</p>
             <h2 className="mb-14 text-3xl font-bold text-foreground sm:text-4xl">
-              From a brief to a <span className="text-neon-blue">full roadmap</span>
+              From a brief to a <span className="text-primary"><RotatingWord words={ROADMAP_WORDS} />.</span>
             </h2>
           </Reveal>
 
@@ -450,13 +468,49 @@ export const LandingPage = () => {
         </div>
       </section>
 
+      {/* Desktop app availability */}
+      <section id="desktop" className="border-t border-border/80 py-20">
+        <div className="container mx-auto px-4">
+          <Reveal className="mb-10 text-center">
+            <p className="eyebrow-label mx-auto mb-4 w-fit">[ desktop app ]</p>
+            <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
+              Also lives on your <span className="text-primary"><RotatingWord words={DESKTOP_WORDS} />.</span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+              A native app for macOS and Windows — one shared core, so a session started on the web
+              picks up right where you left it on desktop.
+            </p>
+          </Reveal>
+
+          <div className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <Reveal className="space-y-5">
+              {DESKTOP_PLATFORMS.map((platform) => (
+                <div
+                  key={platform.name}
+                  className="rounded-xl border border-border/80 bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40"
+                >
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <platform.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mb-2 font-semibold text-foreground">{platform.name}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{platform.detail}</p>
+                </div>
+              ))}
+            </Reveal>
+            <Reveal delay={100}>
+              <DesktopShowcase />
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="border-t border-border/80 py-20">
         <div className="container mx-auto px-4">
           <Reveal className="mx-auto flex max-w-3xl flex-col items-center rounded-2xl border border-border/80 bg-card px-6 py-14 text-center">
             <CheckCircle2 className="mb-4 h-8 w-8 text-primary" />
             <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl">
-              Start organizing your work today
+              Start organizing your work <span className="text-primary"><RotatingWord words={CTA_WORDS} /></span>
             </h2>
             <p className="mt-3 max-w-md text-muted-foreground">
               Free to use. No credit card, no setup calls — just create a course and go.

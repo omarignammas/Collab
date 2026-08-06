@@ -26,8 +26,21 @@ public class QuizMapper {
                 .isOwner(quiz.getUser().getId().equals(viewerId))
                 .ownerName(quiz.getUser().getFirstName() + " " + quiz.getUser().getLastName())
                 .questions(questions == null ? null : questions.stream().map(this::toQuestionResponse).toList())
+                .focusPrompt(quiz.getFocusPrompt())
+                .referenceFileNames(parseReferenceFileNames(quiz.getReferenceFilesJson()))
                 .createdAt(quiz.getCreatedAt())
                 .build();
+    }
+
+    private List<String> parseReferenceFileNames(String referenceFilesJson) {
+        if (referenceFilesJson == null || referenceFilesJson.isBlank()) return null;
+        try {
+            List<String> names = new java.util.ArrayList<>();
+            objectMapper.readTree(referenceFilesJson).forEach(node -> names.add(node.path("name").asText(null)));
+            return names;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public QuizQuestionResponse toQuestionResponse(QuizQuestion question) {

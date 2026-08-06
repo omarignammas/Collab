@@ -76,7 +76,7 @@ class AiGenerationIntegrationTest {
                 .build());
 
         when(llmApiClient.generateText(anyString()))
-                .thenReturn("## Summary\n- Plants convert light to energy\n\n```mermaid\ngraph TD; Light-->Energy;\n```");
+                .thenReturn("## Summary\n- Plants convert light to energy\n\n```json\n{\"label\": \"Photosynthesis\", \"children\": [{\"label\": \"Light\"}]}\n```");
 
         // Goes through the real @Async proxy — runs on a pool thread, off this one.
         courseSummaryService.onSummaryUploaded(new CourseSummaryUploadedEvent(summary.getId()));
@@ -85,7 +85,7 @@ class AiGenerationIntegrationTest {
 
         assertEquals(GenerationStatus.READY, reloaded.getStatus());
         assertTrue(reloaded.getSummaryMarkdown().contains("Plants convert light"));
-        assertEquals("graph TD; Light-->Energy;", reloaded.getDiagramMermaid());
+        assertEquals("{\"label\": \"Photosynthesis\", \"children\": [{\"label\": \"Light\"}]}", reloaded.getDiagramJson());
 
         // If notify(summary.getUser(), ...) had thrown LazyInitializationException
         // inside the async method's catch block, status would be FAILED instead

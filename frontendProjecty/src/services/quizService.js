@@ -1,10 +1,11 @@
 import api from './api';
 
 export const quizService = {
-  async requestQuizGeneration(summaryId, difficulty, referenceFile) {
+  async requestQuizGeneration(summaryId, difficulty, referenceFiles, focusPrompt) {
     const formData = new FormData();
     formData.append('difficulty', difficulty);
-    if (referenceFile) formData.append('referenceFile', referenceFile);
+    (referenceFiles || []).forEach((file) => formData.append('referenceFiles', file));
+    if (focusPrompt) formData.append('focusPrompt', focusPrompt);
 
     const response = await api.post(`/course-summaries/${summaryId}/quizzes`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

@@ -127,9 +127,9 @@ class TaskPlanServiceTest {
     void onTaskPlanRequested_ValidJson_SavesProposedTasksAndNotifies() {
         plan.setExtractedText("material");
         when(taskPlanRepository.findById(500L)).thenReturn(Optional.of(plan));
-        when(llmApiClient.generateText(anyString())).thenReturn("""
+        when(llmApiClient.generateText(anyString(), anyInt())).thenReturn("""
                 [
-                  {"title": "Draft outline", "description": "Sketch the structure", "dueDate": "2026-09-01", "priority": "HIGH", "type": "ASSIGNMENT"},
+                  {"title": "Draft outline", "description": "Sketch the structure", "estimatedMinutes": 45, "benchmark": "Quick outlines usually take under an hour.", "dueDate": "2026-09-01", "priority": "HIGH", "type": "ASSIGNMENT"},
                   {"title": "Write intro", "dueDate": "2026-09-05", "priority": "MEDIUM", "type": "ASSIGNMENT"}
                 ]
                 """);
@@ -160,7 +160,7 @@ class TaskPlanServiceTest {
         when(taskPlanRepository.findById(500L)).thenReturn(Optional.of(plan));
         when(llmApiClient.generateFromImage(anyString(), any(byte[].class), eq("image/png")))
                 .thenReturn("Assignment sheet: build a REST API by next month");
-        when(llmApiClient.generateText(anyString())).thenReturn(
+        when(llmApiClient.generateText(anyString(), anyInt())).thenReturn(
                 "[{\"title\": \"Design API\", \"dueDate\": \"2026-09-01\", \"priority\": \"HIGH\", \"type\": \"ASSIGNMENT\"}]");
         when(taskPlanRepository.save(any(TaskPlanGeneration.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -168,14 +168,14 @@ class TaskPlanServiceTest {
 
         verify(llmApiClient).generateFromImage(anyString(), any(byte[].class), eq("image/png"));
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
-        verify(llmApiClient).generateText(promptCaptor.capture());
+        verify(llmApiClient).generateText(promptCaptor.capture(), anyInt());
         assertTrue(promptCaptor.getValue().contains("build a REST API by next month"));
     }
 
     @Test
     void onTaskPlanRequested_MalformedJson_MarksFailed() {
         when(taskPlanRepository.findById(500L)).thenReturn(Optional.of(plan));
-        when(llmApiClient.generateText(anyString())).thenReturn("not json");
+        when(llmApiClient.generateText(anyString(), anyInt())).thenReturn("not json");
         when(taskPlanRepository.save(any(TaskPlanGeneration.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.onTaskPlanRequested(new TaskPlanRequestedEvent(500L));
@@ -189,7 +189,7 @@ class TaskPlanServiceTest {
     @Test
     void onTaskPlanRequested_CancelledWhileInFlight_DoesNotOverwriteWithReady() {
         when(taskPlanRepository.findById(500L)).thenReturn(Optional.of(plan));
-        when(llmApiClient.generateText(anyString())).thenReturn(
+        when(llmApiClient.generateText(anyString(), anyInt())).thenReturn(
                 "[{\"title\": \"Draft outline\", \"dueDate\": \"2026-09-01\", \"priority\": \"HIGH\", \"type\": \"ASSIGNMENT\"}]");
         when(taskPlanRepository.findStatusById(500L)).thenReturn(GenerationStatus.CANCELLED);
 
@@ -250,7 +250,7 @@ class TaskPlanServiceTest {
         TaskPlanConfirmRequest request = TaskPlanConfirmRequest.builder()
                 .tasks(List.of(
                         ConfirmedTaskItem.builder().title("Draft outline").dueDate(LocalDate.of(2026, 9, 1))
-                                .priority(TaskPriority.HIGH).type(TaskType.ASSIGNMENT).build(),
+                                .priority(TaskPriority.HIGH).type(TaskType.ASSIGNMENT).estimatedMinutes(90).build(),
                         ConfirmedTaskItem.builder().title("Write intro").build()
                 ))
                 .build();
@@ -258,7 +258,10 @@ class TaskPlanServiceTest {
         List<TaskResponse> result = service.confirmPlan(100L, 500L, request);
 
         assertEquals(2, result.size());
-        verify(taskRepository, times(2)).save(any(Task.class));
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+        verify(taskRepository, times(2)).save(taskCaptor.capture());
+        assertEquals(90, taskCaptor.getAllValues().get(0).getDurationMinutes());
+        assertNull(taskCaptor.getAllValues().get(1).getDurationMinutes());
         assertTrue(plan.isApplied());
     }
 
@@ -324,6 +327,22 @@ class TaskPlanServiceTest {
         List<TaskPlanService.ProposedTask> result = service.parsePlanJson(
                 "[{\"title\": \"X\", \"dueDate\": \"not-a-date\"}]");
         assertNull(result.get(0).dueDate());
+    }
+
+    @Test
+    void parsePlanJson_EstimatedMinutesAndBenchmark_ParsedThrough() {
+        List<TaskPlanService.ProposedTask> result = service.parsePlanJson(
+                "[{\"title\": \"X\", \"estimatedMinutes\": 90, \"benchmark\": \"Similar tasks run 1-2h.\"}]");
+        assertEquals(90, result.get(0).estimatedMinutes());
+        assertEquals("Similar tasks run 1-2h.", result.get(0).benchmark());
+    }
+
+    @Test
+    void parsePlanJson_EstimatedMinutesOutOfRange_ClampsToSaneBounds() {
+        List<TaskPlanService.ProposedTask> result = service.parsePlanJson(
+                "[{\"title\": \"A\", \"estimatedMinutes\": 1}, {\"title\": \"B\", \"estimatedMinutes\": 99999}]");
+        assertEquals(10, result.get(0).estimatedMinutes());
+        assertEquals(2_400, result.get(1).estimatedMinutes());
     }
 
     @Test

@@ -52,8 +52,11 @@ public class CourseSummary {
 
     // Absence just means the frontend skips the diagram section — not a
     // separate failure state; status alone still governs READY/FAILED.
+    // A JSON tree ({"label": "...", "children": [...]}) the frontend renders
+    // itself as an SVG concept map — not Mermaid syntax, which rendered
+    // unreliably in the desktop app's WebView.
     @Column(columnDefinition = "TEXT")
-    private String diagramMermaid;
+    private String diagramJson;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

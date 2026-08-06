@@ -494,7 +494,7 @@ const FocusScreen = () => (
           <span className="h-2 w-2 rounded-full bg-destructive" />
           Focus · Round 2/4
         </p>
-        <CircularProgress percentage={68} size={96} strokeWidth={7} color="blue">
+        <CircularProgress percentage={68} size={96} strokeWidth={7} color="orange">
           <div className="flex flex-col items-center">
             <p className="font-numeric text-lg font-bold text-foreground">18:24</p>
             <p className="text-[9px] text-muted-foreground">remaining</p>

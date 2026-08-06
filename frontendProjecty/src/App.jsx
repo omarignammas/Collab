@@ -11,9 +11,16 @@ import LandingPage from './pages/LandingPage';
 import { ThemeProvider } from './components/theme/theme-provider';
 import './App.css'
 import { Toaster } from './components/ui/toaster';
+import { useAuth } from './hooks/useAuth';
 
-// In the desktop app there's no marketing funnel to land on, so skip straight to login.
-const EntryPage = isTauri() ? () => <Navigate to="/login" replace /> : LandingPage;
+// In the desktop app there's no marketing funnel to land on, so skip straight past it —
+// but only to login if there's no session yet. Once signed in once, every later launch
+// should reopen straight into the app, not force the login screen again.
+const DesktopEntryPage = () => {
+  const { isAuthenticated } = useAuth();
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+};
+const EntryPage = isTauri() ? DesktopEntryPage : LandingPage;
 
 // Landing stays eager — it's the entry point Lighthouse/SEO cares about, and lazy-loading
 // it would just add a chunk-fetch delay to the page that's already loading first. Everything

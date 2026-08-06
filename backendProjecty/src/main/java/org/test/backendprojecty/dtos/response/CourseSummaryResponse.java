@@ -22,7 +22,7 @@ public class CourseSummaryResponse {
     private String sourceFileUrl;
     private SourceFileType sourceFileType;
     private String summaryMarkdown;
-    private String diagramMermaid;
+    private String diagramJson;
     private GenerationStatus status;
     @JsonProperty("isOwner")
     private boolean isOwner;

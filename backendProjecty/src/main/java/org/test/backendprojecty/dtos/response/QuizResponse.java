@@ -26,5 +26,7 @@ public class QuizResponse {
     private boolean isOwner;
     private String ownerName;
     private List<QuizQuestionResponse> questions;
+    private String focusPrompt;
+    private List<String> referenceFileNames;
     private LocalDateTime createdAt;
 }

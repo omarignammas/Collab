@@ -15,9 +15,15 @@ export const WidgetPage = () => {
 
   // Speak-and-go, same as the main app's mic button — the widget has no
   // composer to review in, so this only ever sends or silently drops it (no
-  // toast host in a window this small).
+  // toast host in a window this small). The widget's mic always asks Collab
+  // directly (forceAi on the backend), so bring the main window forward and
+  // jump to the room chat right away — that's where the reply actually shows
+  // up, not in this compact popover.
   const { state: voiceState, toggleRecording } = useVoiceRecorder({
-    onTranscribed: (trimmed) => sendAction('send-message', { text: trimmed }),
+    onTranscribed: (trimmed) => {
+      sendAction('send-message', { text: trimmed });
+      sendAction('open-chat');
+    },
   });
 
   // This window is created with transparent:true at the OS level, but the

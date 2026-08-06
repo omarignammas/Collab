@@ -47,15 +47,15 @@ public class Quiz {
     @Builder.Default
     private GenerationStatus status = GenerationStatus.PENDING;
 
-    // Optional student-provided reference (e.g. a past quiz) the LLM draws style/
-    // inspiration from — never the sole source material, the summary always is.
-    private String referenceFileUrl;
-
-    @Enumerated(EnumType.STRING)
-    private SourceFileType referenceFileType;
-
+    // Optional student-provided references (e.g. past quizzes or extra material) the LLM
+    // draws style/inspiration from — never the sole source material, the summary always is.
+    // JSON array of {url, type, name, text} — one entry per uploaded file.
     @Column(columnDefinition = "TEXT")
-    private String referenceText;
+    private String referenceFilesJson;
+
+    // Free-text "focus the quiz on X" instructions from the student (voice-enabled in the UI).
+    @Column(columnDefinition = "TEXT")
+    private String focusPrompt;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

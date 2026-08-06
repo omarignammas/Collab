@@ -29,9 +29,10 @@ public class QuizController {
     public ResponseEntity<QuizResponse> requestQuizGeneration(
             @PathVariable Long summaryId,
             @RequestParam QuizDifficulty difficulty,
-            @RequestParam(required = false) MultipartFile referenceFile
+            @RequestParam(required = false) List<MultipartFile> referenceFiles,
+            @RequestParam(required = false) String focusPrompt
     ) {
-        QuizResponse response = quizService.requestQuizGeneration(summaryId, difficulty, referenceFile);
+        QuizResponse response = quizService.requestQuizGeneration(summaryId, difficulty, referenceFiles, focusPrompt);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

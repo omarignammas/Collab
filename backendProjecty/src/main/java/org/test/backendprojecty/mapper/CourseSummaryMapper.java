@@ -16,7 +16,7 @@ public class CourseSummaryMapper {
                 .sourceFileUrl(summary.getSourceFileUrl())
                 .sourceFileType(summary.getSourceFileType())
                 .summaryMarkdown(summary.getSummaryMarkdown())
-                .diagramMermaid(summary.getDiagramMermaid())
+                .diagramJson(summary.getDiagramJson())
                 .status(summary.getStatus())
                 .isOwner(summary.getUser().getId().equals(viewerId))
                 .ownerName(summary.getUser().getFirstName() + " " + summary.getUser().getLastName())

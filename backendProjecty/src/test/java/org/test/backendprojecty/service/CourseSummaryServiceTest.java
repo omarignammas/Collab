@@ -143,11 +143,11 @@ class CourseSummaryServiceTest {
     // --- onSummaryUploaded ---
 
     @Test
-    void onSummaryUploaded_Pdf_WithMermaidFence_SplitsSummaryAndDiagram() {
+    void onSummaryUploaded_Pdf_WithDiagramFence_SplitsSummaryAndDiagram() {
         summary.setExtractedText("material");
         when(courseSummaryRepository.findById(100L)).thenReturn(Optional.of(summary));
         when(llmApiClient.generateText(anyString())).thenReturn(
-                "## Key Points\n- a\n- b\n\n```mermaid\ngraph TD; A-->B;\n```");
+                "## Key Points\n- a\n- b\n\n```json\n{\"label\": \"Root\", \"children\": [{\"label\": \"A\"}]}\n```");
         when(courseSummaryRepository.save(any(CourseSummary.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.onSummaryUploaded(new CourseSummaryUploadedEvent(100L));
@@ -156,14 +156,31 @@ class CourseSummaryServiceTest {
         verify(courseSummaryRepository).save(captor.capture());
         assertEquals(GenerationStatus.READY, captor.getValue().getStatus());
         assertTrue(captor.getValue().getSummaryMarkdown().contains("Key Points"));
-        assertEquals("graph TD; A-->B;", captor.getValue().getDiagramMermaid());
+        assertEquals("{\"label\": \"Root\", \"children\": [{\"label\": \"A\"}]}", captor.getValue().getDiagramJson());
 
         verify(notificationService).notify(eq(owner), eq(NotificationType.SUMMARY_READY),
                 anyString(), anyString(), eq("/summaries/100"));
     }
 
     @Test
-    void onSummaryUploaded_NoMermaidFence_DiagramStaysNull() {
+    void onSummaryUploaded_MalformedDiagramFence_DiagramStaysNullButFenceStripped() {
+        summary.setExtractedText("material");
+        when(courseSummaryRepository.findById(100L)).thenReturn(Optional.of(summary));
+        when(llmApiClient.generateText(anyString())).thenReturn(
+                "## Key Points\n- a\n\n```json\nnot an object\n```");
+        when(courseSummaryRepository.save(any(CourseSummary.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.onSummaryUploaded(new CourseSummaryUploadedEvent(100L));
+
+        ArgumentCaptor<CourseSummary> captor = ArgumentCaptor.forClass(CourseSummary.class);
+        verify(courseSummaryRepository).save(captor.capture());
+        assertEquals(GenerationStatus.READY, captor.getValue().getStatus());
+        assertNull(captor.getValue().getDiagramJson());
+        assertFalse(captor.getValue().getSummaryMarkdown().contains("```json"));
+    }
+
+    @Test
+    void onSummaryUploaded_NoDiagramFence_DiagramStaysNull() {
         summary.setExtractedText("material");
         when(courseSummaryRepository.findById(100L)).thenReturn(Optional.of(summary));
         when(llmApiClient.generateText(anyString())).thenReturn("Just a plain summary, no diagram.");
@@ -174,7 +191,7 @@ class CourseSummaryServiceTest {
         ArgumentCaptor<CourseSummary> captor = ArgumentCaptor.forClass(CourseSummary.class);
         verify(courseSummaryRepository).save(captor.capture());
         assertEquals(GenerationStatus.READY, captor.getValue().getStatus());
-        assertNull(captor.getValue().getDiagramMermaid());
+        assertNull(captor.getValue().getDiagramJson());
     }
 
     @Test

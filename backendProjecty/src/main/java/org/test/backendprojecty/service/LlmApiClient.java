@@ -60,10 +60,20 @@ public class LlmApiClient {
     }
 
     public String generateText(String prompt) {
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", List.of(Map.of("role", "user", "content", prompt))
-        );
+        return generateText(prompt, null);
+    }
+
+    // Overload for callers whose expected output is long enough to risk hitting the
+    // model's default output cap mid-response (e.g. a detailed multi-task plan) —
+    // discovered when task-plan generation started coming back truncated (valid JSON
+    // prefix, cut off mid-string) once descriptions/estimates/benchmarks were added.
+    public String generateText(String prompt, Integer maxTokens) {
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("model", model);
+        body.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+        if (maxTokens != null) {
+            body.put("max_tokens", maxTokens);
+        }
         return callGroq(body);
     }
 

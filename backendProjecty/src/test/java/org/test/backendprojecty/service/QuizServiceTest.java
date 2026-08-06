@@ -84,7 +84,7 @@ class QuizServiceTest {
             return q;
         });
 
-        QuizResponse response = service.requestQuizGeneration(100L, QuizDifficulty.EASY, null);
+        QuizResponse response = service.requestQuizGeneration(100L, QuizDifficulty.EASY, null, null);
 
         assertEquals(GenerationStatus.PENDING, response.getStatus());
         verify(eventPublisher).publishEvent(new QuizGenerationRequestedEvent(500L));
@@ -96,7 +96,7 @@ class QuizServiceTest {
         when(currentUserProvider.getCurrentUser()).thenReturn(owner);
         when(courseSummaryService.resolveSummaryForViewing(100L, owner)).thenReturn(readySummary);
 
-        assertThrows(BadRequestException.class, () -> service.requestQuizGeneration(100L, QuizDifficulty.EASY, null));
+        assertThrows(BadRequestException.class, () -> service.requestQuizGeneration(100L, QuizDifficulty.EASY, null, null));
         verifyNoInteractions(eventPublisher);
     }
 
@@ -104,7 +104,7 @@ class QuizServiceTest {
     void requestQuizGeneration_WithPdfReference_ExtractsAndStoresReferenceText() throws Exception {
         when(currentUserProvider.getCurrentUser()).thenReturn(owner);
         when(courseSummaryService.resolveSummaryForViewing(100L, owner)).thenReturn(readySummary);
-        MockMultipartFile reference = new MockMultipartFile("referenceFile", "past-quiz.pdf", "application/pdf", "pdf-bytes".getBytes());
+        MockMultipartFile reference = new MockMultipartFile("referenceFiles", "past-quiz.pdf", "application/pdf", "pdf-bytes".getBytes());
         when(courseFileStorageService.store(eq(1L), any())).thenReturn(
                 new CourseFileStorageService.StoredFile("/uploads/course-files/1-ref.pdf", SourceFileType.PDF));
         when(pdfTextExtractionService.extractText(any())).thenReturn("Q1: What is X? Q2: What is Y?");
@@ -114,30 +114,34 @@ class QuizServiceTest {
             return q;
         });
 
-        service.requestQuizGeneration(100L, QuizDifficulty.EASY, reference);
+        service.requestQuizGeneration(100L, QuizDifficulty.EASY, List.of(reference), null);
 
         ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
         verify(quizRepository).save(captor.capture());
-        assertEquals("/uploads/course-files/1-ref.pdf", captor.getValue().getReferenceFileUrl());
-        assertEquals(SourceFileType.PDF, captor.getValue().getReferenceFileType());
-        assertEquals("Q1: What is X? Q2: What is Y?", captor.getValue().getReferenceText());
+        String json = captor.getValue().getReferenceFilesJson();
+        assertNotNull(json);
+        assertTrue(json.contains("/uploads/course-files/1-ref.pdf"));
+        assertTrue(json.contains("\"PDF\""));
+        assertTrue(json.contains("Q1: What is X? Q2: What is Y?"));
     }
 
     @Test
     void requestQuizGeneration_WithImageReference_StoresFileButNoTextYet() {
         when(currentUserProvider.getCurrentUser()).thenReturn(owner);
         when(courseSummaryService.resolveSummaryForViewing(100L, owner)).thenReturn(readySummary);
-        MockMultipartFile reference = new MockMultipartFile("referenceFile", "past-quiz.png", "image/png", "img-bytes".getBytes());
+        MockMultipartFile reference = new MockMultipartFile("referenceFiles", "past-quiz.png", "image/png", "img-bytes".getBytes());
         when(courseFileStorageService.store(eq(1L), any())).thenReturn(
                 new CourseFileStorageService.StoredFile("/uploads/course-files/1-ref.png", SourceFileType.IMAGE));
         when(quizRepository.save(any(Quiz.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.requestQuizGeneration(100L, QuizDifficulty.EASY, reference);
+        service.requestQuizGeneration(100L, QuizDifficulty.EASY, List.of(reference), null);
 
         ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
         verify(quizRepository).save(captor.capture());
-        assertEquals(SourceFileType.IMAGE, captor.getValue().getReferenceFileType());
-        assertNull(captor.getValue().getReferenceText());
+        String json = captor.getValue().getReferenceFilesJson();
+        assertNotNull(json);
+        assertTrue(json.contains("\"IMAGE\""));
+        assertTrue(json.contains("\"text\":null"));
         verifyNoInteractions(pdfTextExtractionService);
     }
 
@@ -147,12 +151,25 @@ class QuizServiceTest {
         when(courseSummaryService.resolveSummaryForViewing(100L, owner)).thenReturn(readySummary);
         when(quizRepository.save(any(Quiz.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.requestQuizGeneration(100L, QuizDifficulty.EASY, null);
+        service.requestQuizGeneration(100L, QuizDifficulty.EASY, null, null);
 
         ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
         verify(quizRepository).save(captor.capture());
-        assertNull(captor.getValue().getReferenceFileUrl());
+        assertNull(captor.getValue().getReferenceFilesJson());
         verifyNoInteractions(courseFileStorageService, pdfTextExtractionService);
+    }
+
+    @Test
+    void requestQuizGeneration_WithFocusPrompt_StoresIt() {
+        when(currentUserProvider.getCurrentUser()).thenReturn(owner);
+        when(courseSummaryService.resolveSummaryForViewing(100L, owner)).thenReturn(readySummary);
+        when(quizRepository.save(any(Quiz.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.requestQuizGeneration(100L, QuizDifficulty.EASY, null, "  focus on recursion  ");
+
+        ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
+        verify(quizRepository).save(captor.capture());
+        assertEquals("focus on recursion", captor.getValue().getFocusPrompt());
     }
 
     // --- onQuizGenerationRequested ---
@@ -254,8 +271,8 @@ class QuizServiceTest {
 
     @Test
     void onQuizGenerationRequested_WithPdfReferenceText_IncludesItInThePromptWithoutVisionCall() {
-        quiz.setReferenceFileType(SourceFileType.PDF);
-        quiz.setReferenceText("Sample past question: What is osmosis?");
+        quiz.setReferenceFilesJson("[{\"url\":\"/uploads/course-files/1-ref.pdf\",\"type\":\"PDF\","
+                + "\"name\":\"past-quiz.pdf\",\"text\":\"Sample past question: What is osmosis?\"}]");
         when(quizRepository.findById(500L)).thenReturn(Optional.of(quiz));
         when(llmApiClient.generateText(anyString())).thenReturn(
                 "[{\"question\": \"Q1\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"correctIndex\": 0}]");
@@ -278,8 +295,8 @@ class QuizServiceTest {
         field.setAccessible(true);
         field.set(service, tempDir.toString());
 
-        quiz.setReferenceFileType(SourceFileType.IMAGE);
-        quiz.setReferenceFileUrl("/uploads/course-files/1-ref.png");
+        quiz.setReferenceFilesJson("[{\"url\":\"/uploads/course-files/1-ref.png\",\"type\":\"IMAGE\","
+                + "\"name\":\"past-quiz.png\",\"text\":null}]");
         when(quizRepository.findById(500L)).thenReturn(Optional.of(quiz));
         when(llmApiClient.generateFromImage(anyString(), any(byte[].class), eq("image/png")))
                 .thenReturn("Past quiz covers cell division and mitosis stages.");

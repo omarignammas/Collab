@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Upload, X, Trash2, Loader2 } from 'lucide-react';
+import { Sparkles, Upload, X, Trash2, Loader2, Clock, Info } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -23,6 +23,19 @@ const TASK_PRIORITIES = [
   { value: 'MEDIUM', label: 'Medium' },
   { value: 'HIGH', label: 'High' },
 ];
+
+// The backend estimates in minutes (same field real tasks already use for
+// YouTube-import video length) — the dialog just presents it as hours, which
+// is the unit a student actually thinks in when scoping a plan.
+const minutesToHours = (minutes) => (minutes ? String(Math.round((minutes / 60) * 100) / 100) : '');
+const hoursToMinutes = (hoursStr) => {
+  const hours = parseFloat(hoursStr);
+  return Number.isFinite(hours) && hours > 0 ? Math.round(hours * 60) : null;
+};
+const formatTotalHours = (rows) => {
+  const totalMinutes = rows.filter((r) => r.include).reduce((sum, r) => sum + (r.estimatedMinutes || 0), 0);
+  return `${Math.round((totalMinutes / 60) * 10) / 10}h`;
+};
 
 export const AiTaskPlanDialog = ({ courseId, open, onOpenChange, onPlanApplied }) => {
   const [step, setStep] = useState('upload');
@@ -130,8 +143,8 @@ export const AiTaskPlanDialog = ({ courseId, open, onOpenChange, onPlanApplied }
     if (selected.length === 0) return;
     setConfirming(true);
     try {
-      const tasks = selected.map(({ title, description, dueDate, priority, type }) => ({
-        title, description, dueDate: dueDate || null, priority, type,
+      const tasks = selected.map(({ title, description, estimatedMinutes, dueDate, priority, type }) => ({
+        title, description, estimatedMinutes: estimatedMinutes || null, dueDate: dueDate || null, priority, type,
       }));
       await taskPlanService.confirmPlan(courseId, planId, tasks);
       toast({ title: 'Tasks created', description: `${selected.length} task${selected.length === 1 ? '' : 's'} added to this course.` });
@@ -155,8 +168,8 @@ export const AiTaskPlanDialog = ({ courseId, open, onOpenChange, onPlanApplied }
             AI Task Plan
           </DialogTitle>
           <DialogDescription>
-            {step === 'upload' && 'Upload a reference file and/or describe the project — AI proposes a task breakdown you can review before anything is created.'}
-            {step === 'generating' && 'Reading your material and drafting a plan…'}
+            {step === 'upload' && 'Upload a reference file and/or describe the project — AI breaks it into small, individually-scoped tasks with technical detail and time estimates, for you to review before anything is created.'}
+            {step === 'generating' && 'Reading your material and drafting a detailed, granular plan…'}
             {step === 'review' && 'Review the proposed tasks — edit, uncheck, or remove anything before creating them.'}
           </DialogDescription>
         </DialogHeader>
@@ -221,41 +234,78 @@ export const AiTaskPlanDialog = ({ courseId, open, onOpenChange, onPlanApplied }
         )}
 
         {step === 'review' && (
-          <div className="max-h-[50vh] space-y-3 overflow-y-auto py-2">
-            {rows.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground">No tasks left — add one manually instead.</p>
-            ) : (
-              rows.map((row, i) => (
-                <div key={i} className="flex items-start gap-2 rounded-lg border border-border/80 bg-card p-3">
-                  <Checkbox
-                    checked={row.include}
-                    onCheckedChange={(checked) => updateRow(i, { include: Boolean(checked) })}
-                    className="mt-2"
-                  />
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Input value={row.title} onChange={(e) => updateRow(i, { title: e.target.value })} className="font-medium" />
-                    <div className="grid grid-cols-3 gap-2">
-                      <Input type="date" value={row.dueDate || ''} onChange={(e) => updateRow(i, { dueDate: e.target.value })} className="text-xs" />
-                      <Select value={row.priority} onValueChange={(v) => updateRow(i, { priority: v })}>
-                        <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TASK_PRIORITIES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Select value={row.type} onValueChange={(v) => updateRow(i, { type: v })}>
-                        <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TASK_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeRow(i)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))
+          <div className="space-y-3 py-2">
+            {rows.length > 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="font-numeric font-medium text-foreground">{formatTotalHours(rows)}</span>
+                {' '}estimated across {rows.filter((r) => r.include).length} of {rows.length} tasks
+              </div>
             )}
+            <div className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
+              {rows.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground">No tasks left — add one manually instead.</p>
+              ) : (
+                rows.map((row, i) => (
+                  <div key={i} className="flex items-start gap-2 rounded-lg border border-border/80 bg-card p-3">
+                    <Checkbox
+                      checked={row.include}
+                      onCheckedChange={(checked) => updateRow(i, { include: Boolean(checked) })}
+                      className="mt-2"
+                    />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Input value={row.title} onChange={(e) => updateRow(i, { title: e.target.value })} className="font-medium" />
+
+                      <Textarea
+                        value={row.description || ''}
+                        onChange={(e) => updateRow(i, { description: e.target.value })}
+                        placeholder="What exactly this involves, step by step…"
+                        className="min-h-16 resize-none text-xs"
+                        rows={3}
+                      />
+
+                      {row.benchmark && (
+                        <p className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+                          <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                          {row.benchmark}
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="0.25"
+                            min="0"
+                            value={minutesToHours(row.estimatedMinutes)}
+                            onChange={(e) => updateRow(i, { estimatedMinutes: hoursToMinutes(e.target.value) })}
+                            className="text-xs"
+                            placeholder="Hrs"
+                            title="Estimated hours"
+                          />
+                        </div>
+                        <Input type="date" value={row.dueDate || ''} onChange={(e) => updateRow(i, { dueDate: e.target.value })} className="text-xs" />
+                        <Select value={row.priority} onValueChange={(v) => updateRow(i, { priority: v })}>
+                          <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {TASK_PRIORITIES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Select value={row.type} onValueChange={(v) => updateRow(i, { type: v })}>
+                          <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {TASK_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeRow(i)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 

@@ -16,6 +16,8 @@ import java.time.LocalDate;
 public class ProposedTaskResponse {
     private String title;
     private String description;
+    private Integer estimatedMinutes;
+    private String benchmark;
     private LocalDate dueDate;
     private TaskPriority priority;
     private TaskType type;
