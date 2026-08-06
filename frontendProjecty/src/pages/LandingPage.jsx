@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   FolderKanban,
   ArrowRight,
+  LoaderCircle,
   Layers,
   Map,
   Flame,
@@ -18,9 +19,13 @@ import {
   Timer,
   Apple,
   AppWindow,
+  Mail,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/use-toast';
 import { Reveal } from '../components/shared/Reveal';
 import ScreensShowcase from '../components/landing/ScreensShowcase';
 import CollaborateShowcase from '../components/landing/CollaborateShowcase';
@@ -32,6 +37,7 @@ import RotatingWord from '../components/landing/RotatingWord';
 import { AiChatAnimation, NotesAnimation, TasksBoardAnimation, RoadmapAnimation } from '../components/landing/FeatureAnimations';
 import HeroNotifications from '../components/landing/HeroNotifications';
 import { ModeToggle } from '../components/ui/mode-toggle';
+import { waitlistService } from '../services/waitlistService';
 
 const NAV_LINKS = [
   { href: '#screens', label: 'Screens' },
@@ -41,6 +47,7 @@ const NAV_LINKS = [
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'Process' },
   { href: '#desktop', label: 'Desktop' },
+  { href: '#waitlist', label: 'Waitlist' },
 ];
 
 const DESKTOP_PLATFORMS = [
@@ -129,8 +136,12 @@ const STEPS = [
 
 export const LandingPage = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 24);
@@ -139,11 +150,47 @@ export const LandingPage = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const submitWaitlist = async (event) => {
+    event.preventDefault();
+    const email = waitlistEmail.trim();
+
+    if (!email) {
+      toast({ title: 'Enter your email', description: 'Use the same email address you want notified on.' });
+      return;
+    }
+
+    setIsSubmittingWaitlist(true);
+    try {
+      await waitlistService.joinWaitlist(email);
+      setWaitlistEmail('');
+      setWaitlistJoined(true);
+      toast({
+        title: 'You are on the list',
+        description: 'We will email you when the desktop build is ready to try for free.',
+      });
+    } catch (error) {
+      setWaitlistJoined(false);
+      toast({
+        title: 'Could not join waitlist',
+        description: error.response?.data?.message || 'Please try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingWaitlist(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Nav — always floating rounded */}
-      <div className="sticky top-0 z-40 px-3 pb-3 sm:px-6">
-        <nav className="mx-auto flex max-w-5xl items-center justify-between rounded-2xl border border-border/80 bg-background/95 px-4 py-3 backdrop-blur-md shadow-lg shadow-black/10 transition-all duration-300">
+      {/* Nav — flush with the page at the top, becomes a floating inset card once scrolled */}
+      <div className={`sticky top-0 z-40 transition-[padding] duration-300 ${isScrolled ? 'px-3 pt-3 sm:px-6' : 'px-0 pt-0'}`}>
+        <nav
+          className={`mx-auto flex items-center justify-between backdrop-blur-md transition-all duration-300 ${
+            isScrolled
+              ? 'max-w-5xl rounded-2xl border border-border/80 bg-background/95 px-4 py-3 shadow-lg shadow-black/10'
+              : 'max-w-none border-b border-border/80 bg-background/90 px-4 py-4 sm:px-6 md:px-10'
+          }`}
+        >
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-foreground">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
               <FolderKanban className="h-4 w-4" />
@@ -505,22 +552,77 @@ export const LandingPage = () => {
       </section>
 
       {/* Final CTA */}
-      <section className="border-t border-border/80 py-20">
+      <section id="waitlist" className="border-t border-border/80 py-20">
         <div className="container mx-auto px-4">
-          <Reveal className="mx-auto flex max-w-3xl flex-col items-center rounded-2xl border border-border/80 bg-card px-6 py-14 text-center">
-            <CheckCircle2 className="mb-4 h-8 w-8 text-primary" />
-            <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl">
-              Start organizing your work <span className="text-primary"><RotatingWord words={CTA_WORDS} /></span>
-            </h2>
-            <p className="mt-3 max-w-md text-muted-foreground">
-              Free to use. No credit card, no setup calls — just create a course and go.
-            </p>
-            <Button asChild size="lg" className="mt-8 transition-transform hover:-translate-y-0.5">
-              <Link to={user ? '/courses' : '/register'}>
-                {user ? 'Go to Courses' : 'Get Started Free'}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+          <Reveal className="mx-auto max-w-5xl rounded-2xl border border-border/80 bg-card px-6 py-10 shadow-lg shadow-black/10 sm:px-8 sm:py-12">
+            <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+              <div>
+                <p className="eyebrow-label mb-4 w-fit">[ desktop waitlist ]</p>
+                <h2 className="text-balance text-3xl font-bold text-foreground sm:text-4xl">
+                  Start organizing your work <span className="text-primary"><RotatingWord words={CTA_WORDS} /></span>
+                </h2>
+                <p className="mt-3 max-w-xl text-muted-foreground">
+                  The desktop app is already ready. Join the waitlist and we&apos;ll send it to you so you can try it on your own machine, free.
+                </p>
+
+                <div className="mt-6 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full border border-border/70 bg-background px-3 py-1.5">Desktop is ready</span>
+                  <span className="rounded-full border border-border/70 bg-background px-3 py-1.5">Try it free</span>
+                  <span className="rounded-full border border-border/70 bg-background px-3 py-1.5">One email, no spam</span>
+                </div>
+              </div>
+
+              <form
+                onSubmit={submitWaitlist}
+                className={`rounded-xl border border-border/70 bg-background p-4 sm:p-5 transition-all duration-300 ${waitlistJoined ? 'border-emerald-500/50 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]' : ''}`}
+              >
+                <div className="mb-4 flex items-center gap-2 text-sm font-medium text-foreground">
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-300 ${waitlistJoined ? 'bg-emerald-500/15 text-emerald-600' : 'bg-primary/10 text-primary'}`}>
+                    {waitlistJoined ? <CheckCircle2 className="h-4.5 w-4.5 animate-in zoom-in-75 duration-300" /> : <Mail className="h-4.5 w-4.5" />}
+                  </span>
+                  {waitlistJoined ? 'You are on the list' : 'Join the list'}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="waitlist-email">Email address</Label>
+                  <Input
+                    id="waitlist-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={waitlistEmail}
+                    onChange={(event) => {
+                      setWaitlistEmail(event.target.value);
+                      if (waitlistJoined) setWaitlistJoined(false);
+                    }}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+
+                <Button type="submit" size="lg" className="mt-4 w-full" disabled={isSubmittingWaitlist}>
+                  {isSubmittingWaitlist ? (
+                    <>
+                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                      Joining...
+                    </>
+                  ) : waitlistJoined ? (
+                    <>
+                      Saved
+                      <CheckCircle2 className="ml-2 h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Join waitlist
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  The signup is stored first, then the backend tries to send the notification email. If mail is offline, the waitlist still works.
+                </p>
+              </form>
+            </div>
           </Reveal>
         </div>
       </section>
