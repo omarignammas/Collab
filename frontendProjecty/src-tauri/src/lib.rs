@@ -1,7 +1,7 @@
 use tauri::image::Image;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
-  Listener, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, WebviewWindow, WindowEvent,
+  Listener, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, WebviewWindow,
 };
 
 fn position_widget_under_tray<R: Runtime>(widget: &WebviewWindow<R>, icon_rect: &tauri::Rect) {
@@ -31,9 +31,9 @@ pub fn run() {
         )?;
       }
 
-      // The widget window is created hidden by tauri.conf.json and only ever
-      // toggled by the tray icon below — dismiss it like a native menu-bar
-      // popover as soon as it stops being the key window (click-away).
+        // The widget window is created hidden by tauri.conf.json and toggled
+        // by the tray icon below. It intentionally stays visible when another
+        // app becomes active so it remains useful over fullscreen workspaces.
       if let Some(widget) = app.get_webview_window("widget") {
         // Real NSVisualEffectView frosted glass, not a CSS approximation. The
         // radius must match WidgetPage.jsx's rounded-[28px] card exactly —
@@ -77,12 +77,6 @@ pub fn run() {
           }
         }
 
-        let widget_for_blur = widget.clone();
-        widget.on_window_event(move |event| {
-          if let WindowEvent::Focused(false) = event {
-            let _ = widget_for_blur.hide();
-          }
-        });
       }
 
       // Menu-bar presence for an active Focus session. The countdown itself is
