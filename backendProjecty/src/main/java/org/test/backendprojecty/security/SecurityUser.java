@@ -4,8 +4,11 @@ import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.test.backendprojecty.entity.AccountStatus;
+import org.test.backendprojecty.entity.Role;
 import org.test.backendprojecty.entity.User;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -35,7 +38,10 @@ public class SecurityUser implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        if (user.getRole() == Role.ADMIN) {
+            return true;
+        }
+        return user.getTrialExpiresAt() == null || user.getTrialExpiresAt().isAfter(LocalDateTime.now());
     }
 
     @Override
@@ -50,7 +56,6 @@ public class SecurityUser implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.isEnabled();
+        return user.isEnabled() && user.getAccountStatus() == AccountStatus.APPROVED;
     }
 }
-

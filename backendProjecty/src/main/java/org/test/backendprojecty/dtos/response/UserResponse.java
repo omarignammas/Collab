@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.test.backendprojecty.entity.AccountStatus;
 import org.test.backendprojecty.entity.Role;
 
 import java.time.LocalDateTime;
@@ -19,5 +20,9 @@ public class UserResponse {
     private String lastName;
     private String avatarUrl;
     private Role role;
+    private boolean enabled;
+    private AccountStatus accountStatus;
+    private LocalDateTime approvedAt;
+    private LocalDateTime trialExpiresAt;
     private LocalDateTime createdAt;
 }

@@ -45,6 +45,13 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Enumerated(EnumType.STRING)
+    private AccountStatus accountStatus;
+
+    private LocalDateTime approvedAt;
+
+    private LocalDateTime trialExpiresAt;
+
     private String avatarUrl;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

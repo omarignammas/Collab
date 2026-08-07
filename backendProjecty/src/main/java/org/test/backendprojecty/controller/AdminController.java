@@ -35,6 +35,16 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getStats());
     }
 
+    @PatchMapping("/users/{userId}/approve")
+    public ResponseEntity<UserResponse> approveUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(adminService.approveUser(userId));
+    }
+
+    @PatchMapping("/users/{userId}/suspend")
+    public ResponseEntity<UserResponse> suspendUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(adminService.suspendUser(userId));
+    }
+
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
         adminService.deleteUser(userId);

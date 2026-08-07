@@ -1,17 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Users, UserPlus, CalendarDays, Trash2 } from 'lucide-react';
+import { Ban, Check, Clock, ShieldCheck, Users } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '../components/ui/alert-dialog';
+import { Button } from '../components/ui/button';
 import PageHero from '../components/shared/PageHero';
 import TrendAreaChart from '../components/charts/TrendAreaChart';
 import Avatar from '../components/shared/Avatar';
@@ -37,16 +27,21 @@ const StatTile = (props) => {
   );
 };
 
+const STATUS_STYLES = {
+  PENDING: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+  APPROVED: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  SUSPENDED: 'border-destructive/30 bg-destructive/10 text-destructive',
+};
+
 export const AdminPage = () => {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState(null);
+  const [busyUserId, setBusyUserId] = useState(null);
 
-  useEffect(() => {
-    (async () => {
+  const loadAdminData = async () => {
       setLoading(true);
       try {
         const [statsResult, usersResult] = await Promise.all([
@@ -60,24 +55,49 @@ export const AdminPage = () => {
       } finally {
         setLoading(false);
       }
-    })();
+  };
+
+  useEffect(() => {
+    loadAdminData();
   }, []);
 
-  const handleDelete = async (targetUser) => {
-    setDeletingId(targetUser.id);
+  const replaceUser = (updatedUser) => {
+    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+  };
+
+  const handleApprove = async (targetUser) => {
+    setBusyUserId(targetUser.id);
     try {
-      await adminService.deleteUser(targetUser.id);
-      setUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
-      setStats((prev) => (prev ? { ...prev, totalUsers: prev.totalUsers - 1 } : prev));
-      toast({ title: 'User deleted', description: `${targetUser.firstName} ${targetUser.lastName} no longer has access.` });
+      const updatedUser = await adminService.approveUser(targetUser.id);
+      replaceUser(updatedUser);
+      await loadAdminData();
+      toast({ title: 'User approved', description: `${targetUser.firstName} now has a 15-day trial.` });
     } catch (error) {
       toast({
-        title: "Couldn't delete user",
+        title: "Couldn't approve user",
         description: error.response?.data?.message || 'Something went wrong.',
         variant: 'destructive',
       });
     } finally {
-      setDeletingId(null);
+      setBusyUserId(null);
+    }
+  };
+
+  const handleSuspend = async (targetUser) => {
+    setBusyUserId(targetUser.id);
+    try {
+      const updatedUser = await adminService.suspendUser(targetUser.id);
+      replaceUser(updatedUser);
+      await loadAdminData();
+      toast({ title: 'User suspended', description: `${targetUser.firstName} can no longer sign in.` });
+    } catch (error) {
+      toast({
+        title: "Couldn't suspend user",
+        description: error.response?.data?.message || 'Something went wrong.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyUserId(null);
     }
   };
 
@@ -103,13 +123,9 @@ export const AdminPage = () => {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <StatTile icon={Users} label="Total users" value={stats.totalUsers} />
-            <StatTile icon={UserPlus} label="Joined today" value={stats.newUsersToday} />
-            <StatTile
-              icon={CalendarDays}
-              label="Joined this week"
-              value={trendData.slice(-7).reduce((sum, d) => sum + d.value, 0)}
-            />
+            <StatTile icon={Users} label="Active users" value={stats.totalUsers} />
+            <StatTile icon={Clock} label="Pending requests" value={stats.pendingUsers || 0} />
+            <StatTile icon={Ban} label="Suspended" value={stats.suspendedUsers || 0} />
           </div>
 
           <Card className="border-border/80 bg-card">
@@ -121,53 +137,55 @@ export const AdminPage = () => {
 
           <Card className="border-border/80 bg-card">
             <CardContent className="p-5">
-              <p className="section-header mb-4">all users ({users.length})</p>
+              <p className="section-header mb-4">access requests and users ({users.length})</p>
               <div className="divide-y divide-border/60">
                 {users.map((u) => (
-                  <div key={u.id} className="flex items-center gap-3 py-3">
+                  <div key={u.id} className="flex flex-col gap-3 py-3 lg:flex-row lg:items-center">
                     <Avatar name={`${u.firstName} ${u.lastName}`} avatarUrl={u.avatarUrl} size="sm" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{u.firstName} {u.lastName}</p>
                       <p className="truncate text-xs text-muted-foreground">{u.email}</p>
                     </div>
-                    {u.role === 'ADMIN' && (
-                      <span className="pill-in-progress shrink-0 rounded px-1.5 py-0.5 text-xs">Admin</span>
-                    )}
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      Joined {format(new Date(u.createdAt), 'MMM d, yyyy')}
-                    </span>
-                    {u.id !== currentUser?.id && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label={`Delete ${u.firstName} ${u.lastName}`}
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete {u.firstName} {u.lastName}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This disables their account — they won't be able to sign in anymore. Their courses,
-                              tasks, and notes stay in place.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={deletingId === u.id}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(u)}
-                              disabled={deletingId === u.id}
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              {deletingId === u.id ? 'Deleting...' : 'Delete'}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                      {u.role === 'ADMIN' && (
+                        <span className="pill-in-progress shrink-0 rounded px-1.5 py-0.5 text-xs">Admin</span>
+                      )}
+                      <span className={`shrink-0 rounded border px-2 py-1 text-xs font-medium ${STATUS_STYLES[u.accountStatus] || STATUS_STYLES.PENDING}`}>
+                        {u.accountStatus || 'PENDING'}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        Joined {format(new Date(u.createdAt), 'MMM d, yyyy')}
+                      </span>
+                      {u.trialExpiresAt && (
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          Trial ends {format(new Date(u.trialExpiresAt), 'MMM d, yyyy')}
+                        </span>
+                      )}
+                      {u.role !== 'ADMIN' && u.accountStatus === 'PENDING' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleApprove(u)}
+                          disabled={busyUserId === u.id}
+                        >
+                          <Check className="mr-1.5 h-3.5 w-3.5" />
+                          {busyUserId === u.id ? 'Approving...' : 'Approve'}
+                        </Button>
+                      )}
+                      {u.id !== currentUser?.id && u.role !== 'ADMIN' && u.accountStatus !== 'SUSPENDED' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSuspend(u)}
+                          disabled={busyUserId === u.id}
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                        >
+                          <Ban className="mr-1.5 h-3.5 w-3.5" />
+                          {busyUserId === u.id ? 'Suspending...' : 'Suspend'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

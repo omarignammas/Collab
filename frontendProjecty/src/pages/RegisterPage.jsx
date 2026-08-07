@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { FolderKanban, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -16,9 +16,9 @@ export const RegisterPage = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,6 +27,7 @@ export const RegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setLoading(true);
 
     if (formData.password.length < 6) {
@@ -36,8 +37,14 @@ export const RegisterPage = () => {
     }
 
     try {
-      await register(formData);
-      navigate('/dashboard');
+      const response = await register(formData);
+      setSuccessMessage(response.message || 'Your request was sent. An admin will approve your 15-day trial.');
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -64,6 +71,11 @@ export const RegisterPage = () => {
             {error && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
+              </div>
+            )}
+            {successMessage && (
+              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-600">
+                {successMessage}
               </div>
             )}
 

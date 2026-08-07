@@ -11,6 +11,16 @@ export const adminService = {
     return response.data;
   },
 
+  async approveUser(userId) {
+    const response = await api.patch(`/admin/users/${userId}/approve`);
+    return response.data;
+  },
+
+  async suspendUser(userId) {
+    const response = await api.patch(`/admin/users/${userId}/suspend`);
+    return response.data;
+  },
+
   async deleteUser(userId) {
     await api.delete(`/admin/users/${userId}`);
   },

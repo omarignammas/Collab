@@ -11,6 +11,8 @@ import org.test.backendprojecty.dtos.response.AdminStatsResponse;
 import org.test.backendprojecty.dtos.response.DailySignupResponse;
 import org.test.backendprojecty.dtos.response.PagingResult;
 import org.test.backendprojecty.dtos.response.UserResponse;
+import org.test.backendprojecty.entity.AccountStatus;
+import org.test.backendprojecty.entity.Role;
 import org.test.backendprojecty.entity.User;
 import org.test.backendprojecty.exception.BadRequestException;
 import org.test.backendprojecty.exception.ResourceNotFoundException;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 public class AdminService {
 
     private static final int TREND_DAYS = 14;
+    private static final int TRIAL_DAYS = 15;
 
     private final UserRepository userRepository;
     private final CurrentUserProvider currentUserProvider;
@@ -39,7 +42,7 @@ public class AdminService {
     @Transactional(readOnly = true)
     public PagingResult<UserResponse> listUsers(PaginationRequest request) {
         Pageable pageable = PaginationUtils.getPageable(request);
-        Page<User> page = userRepository.findByEnabledTrue(pageable);
+        Page<User> page = userRepository.findAll(pageable);
 
         List<UserResponse> content = page.getContent().stream()
                 .map(this::toResponse)
@@ -51,6 +54,8 @@ public class AdminService {
     @Transactional(readOnly = true)
     public AdminStatsResponse getStats() {
         long totalUsers = userRepository.countByEnabledTrue();
+        long pendingUsers = userRepository.countByAccountStatus(AccountStatus.PENDING);
+        long suspendedUsers = userRepository.countByAccountStatus(AccountStatus.SUSPENDED);
 
         LocalDate today = LocalDate.now();
         LocalDateTime startOfToday = today.atStartOfDay();
@@ -69,8 +74,44 @@ public class AdminService {
         return AdminStatsResponse.builder()
                 .totalUsers(totalUsers)
                 .newUsersToday(newUsersToday)
+                .pendingUsers(pendingUsers)
+                .suspendedUsers(suspendedUsers)
                 .signupsByDay(signupsByDay)
                 .build();
+    }
+
+    @Transactional
+    public UserResponse approveUser(Long userId) {
+        User user = findUser(userId);
+        if (user.getRole() == Role.ADMIN) {
+            throw new BadRequestException("Admin accounts are already approved");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        user.setEnabled(true);
+        user.setAccountStatus(AccountStatus.APPROVED);
+        user.setApprovedAt(now);
+        user.setTrialExpiresAt(now.plusDays(TRIAL_DAYS));
+
+        return toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponse suspendUser(Long userId) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        if (currentUser.getId().equals(userId)) {
+            throw new BadRequestException("You can't suspend your own account");
+        }
+
+        User user = findUser(userId);
+        if (user.getRole() == Role.ADMIN) {
+            throw new BadRequestException("Admin accounts can't be suspended here");
+        }
+
+        user.setEnabled(false);
+        user.setAccountStatus(AccountStatus.SUSPENDED);
+
+        return toResponse(userRepository.save(user));
     }
 
     @Transactional
@@ -80,13 +121,18 @@ public class AdminService {
             throw new BadRequestException("You can't delete your own account");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        User user = findUser(userId);
 
         // Soft delete — disabling also blocks future logins (SecurityUser.isEnabled()
         // already reads this flag) without touching any of the user's existing data.
         user.setEnabled(false);
+        user.setAccountStatus(AccountStatus.SUSPENDED);
         userRepository.save(user);
+    }
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
     }
 
     private UserResponse toResponse(User user) {
@@ -97,7 +143,18 @@ public class AdminService {
                 .lastName(user.getLastName())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
+                .enabled(user.isEnabled())
+                .accountStatus(resolveStatus(user))
+                .approvedAt(user.getApprovedAt())
+                .trialExpiresAt(user.getTrialExpiresAt())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private AccountStatus resolveStatus(User user) {
+        if (user.getAccountStatus() != null) {
+            return user.getAccountStatus();
+        }
+        return user.isEnabled() ? AccountStatus.APPROVED : AccountStatus.SUSPENDED;
     }
 }

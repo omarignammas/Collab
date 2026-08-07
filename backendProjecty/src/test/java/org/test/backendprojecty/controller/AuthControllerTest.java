@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.test.backendprojecty.dtos.request.LoginRequest;
 import org.test.backendprojecty.dtos.request.RegisterRequest;
 import org.test.backendprojecty.dtos.response.AuthResponse;
+import org.test.backendprojecty.entity.AccountStatus;
 import org.test.backendprojecty.security.JwtAuthenticationFilter;
 import org.test.backendprojecty.service.AuthService;
 
@@ -52,10 +53,11 @@ class AuthControllerTest {
                 .build();
 
         AuthResponse response = AuthResponse.builder()
-                .token("jwt-token")
                 .email("test@example.com")
                 .firstName("John")
                 .lastName("Doe")
+                .accountStatus(AccountStatus.PENDING)
+                .message("Your account request was sent. An admin must approve it before you can sign in.")
                 .build();
 
         when(authService.register(any(RegisterRequest.class))).thenReturn(response);
@@ -65,8 +67,9 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.token").value("jwt-token"))
-                .andExpect(jsonPath("$.email").value("test@example.com"));
+                .andExpect(jsonPath("$.token").doesNotExist())
+                .andExpect(jsonPath("$.email").value("test@example.com"))
+                .andExpect(jsonPath("$.accountStatus").value("PENDING"));
     }
 
     @Test

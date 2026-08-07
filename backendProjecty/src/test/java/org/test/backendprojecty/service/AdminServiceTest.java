@@ -14,6 +14,7 @@ import org.test.backendprojecty.dtos.request.PaginationRequest;
 import org.test.backendprojecty.dtos.response.AdminStatsResponse;
 import org.test.backendprojecty.dtos.response.PagingResult;
 import org.test.backendprojecty.dtos.response.UserResponse;
+import org.test.backendprojecty.entity.AccountStatus;
 import org.test.backendprojecty.entity.Role;
 import org.test.backendprojecty.entity.User;
 import org.test.backendprojecty.exception.BadRequestException;
@@ -51,9 +52,9 @@ class AdminServiceTest {
         adminService = new AdminService(userRepository, currentUserProvider);
 
         admin = User.builder().id(1L).email("demo@projectii.app").firstName("Omaritos").lastName("Igna")
-                .role(Role.ADMIN).enabled(true).createdAt(LocalDateTime.now().minusDays(30)).build();
+                .role(Role.ADMIN).enabled(true).accountStatus(AccountStatus.APPROVED).createdAt(LocalDateTime.now().minusDays(30)).build();
         regular = User.builder().id(2L).email("ada@example.com").firstName("Ada").lastName("Lovelace")
-                .role(Role.USER).enabled(true).createdAt(LocalDateTime.now()).build();
+                .role(Role.USER).enabled(true).accountStatus(AccountStatus.APPROVED).createdAt(LocalDateTime.now()).build();
     }
 
     @Test
@@ -61,7 +62,7 @@ class AdminServiceTest {
         PaginationRequest request = PaginationRequest.builder().page(1).size(10).sortField("id").direction(Sort.Direction.ASC).build();
         Pageable pageable = PageRequest.of(0, 10);
         Page<User> userPage = new PageImpl<>(Arrays.asList(admin, regular), pageable, 2);
-        when(userRepository.findByEnabledTrue(any(Pageable.class))).thenReturn(userPage);
+        when(userRepository.findAll(any(Pageable.class))).thenReturn(userPage);
 
         PagingResult<UserResponse> result = adminService.listUsers(request);
 
@@ -74,6 +75,8 @@ class AdminServiceTest {
     @Test
     void getStats_ComputesTotalsAndDailyTrend() {
         when(userRepository.countByEnabledTrue()).thenReturn(42L);
+        when(userRepository.countByAccountStatus(AccountStatus.PENDING)).thenReturn(4L);
+        when(userRepository.countByAccountStatus(AccountStatus.SUSPENDED)).thenReturn(2L);
         when(userRepository.countByEnabledTrueAndCreatedAtBetween(any(), any())).thenReturn(3L);
 
         LocalDate today = LocalDate.now();
@@ -88,6 +91,8 @@ class AdminServiceTest {
 
         assertEquals(42L, stats.getTotalUsers());
         assertEquals(3L, stats.getNewUsersToday());
+        assertEquals(4L, stats.getPendingUsers());
+        assertEquals(2L, stats.getSuspendedUsers());
         assertEquals(14, stats.getSignupsByDay().size());
 
         long todayCount = stats.getSignupsByDay().stream()
@@ -120,7 +125,37 @@ class AdminServiceTest {
         adminService.deleteUser(2L);
 
         assertFalse(regular.isEnabled());
+        assertEquals(AccountStatus.SUSPENDED, regular.getAccountStatus());
         verify(userRepository).save(regular);
+    }
+
+    @Test
+    void approveUser_Success_StartsTrial() {
+        regular.setEnabled(false);
+        regular.setAccountStatus(AccountStatus.PENDING);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(regular));
+        when(userRepository.save(regular)).thenReturn(regular);
+
+        UserResponse response = adminService.approveUser(2L);
+
+        assertTrue(regular.isEnabled());
+        assertEquals(AccountStatus.APPROVED, regular.getAccountStatus());
+        assertNotNull(regular.getApprovedAt());
+        assertNotNull(regular.getTrialExpiresAt());
+        assertEquals(AccountStatus.APPROVED, response.getAccountStatus());
+    }
+
+    @Test
+    void suspendUser_Success_DisablesAccount() {
+        when(currentUserProvider.getCurrentUser()).thenReturn(admin);
+        when(userRepository.findById(2L)).thenReturn(Optional.of(regular));
+        when(userRepository.save(regular)).thenReturn(regular);
+
+        UserResponse response = adminService.suspendUser(2L);
+
+        assertFalse(regular.isEnabled());
+        assertEquals(AccountStatus.SUSPENDED, regular.getAccountStatus());
+        assertEquals(AccountStatus.SUSPENDED, response.getAccountStatus());
     }
 
     @Test

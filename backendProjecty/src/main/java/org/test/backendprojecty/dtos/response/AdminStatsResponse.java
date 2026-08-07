@@ -14,5 +14,7 @@ import java.util.List;
 public class AdminStatsResponse {
     private long totalUsers;
     private long newUsersToday;
+    private long pendingUsers;
+    private long suspendedUsers;
     private List<DailySignupResponse> signupsByDay;
 }

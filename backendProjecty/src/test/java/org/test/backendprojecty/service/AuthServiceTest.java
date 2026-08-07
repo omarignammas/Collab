@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.test.backendprojecty.dtos.request.LoginRequest;
 import org.test.backendprojecty.dtos.request.RegisterRequest;
 import org.test.backendprojecty.dtos.response.AuthResponse;
+import org.test.backendprojecty.entity.AccountStatus;
 import org.test.backendprojecty.entity.Role;
 import org.test.backendprojecty.entity.User;
 import org.test.backendprojecty.exception.BadRequestException;
@@ -20,6 +21,7 @@ import org.test.backendprojecty.security.JwtService;
 import org.test.backendprojecty.security.SecurityUser;
 
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,6 +71,8 @@ class AuthServiceTest {
                 .lastName("Doe")
                 .role(Role.USER)
                 .enabled(true)
+                .accountStatus(AccountStatus.APPROVED)
+                .trialExpiresAt(LocalDateTime.now().plusDays(15))
                 .build();
     }
 
@@ -77,20 +81,32 @@ class AuthServiceTest {
         // Given
         when(userRepository.existsByEmail(registerRequest.getEmail())).thenReturn(false);
         when(passwordEncoder.encode(registerRequest.getPassword())).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenReturn(user);
-        when(jwtService.generateToken(any(SecurityUser.class))).thenReturn("jwt-token");
+        User pendingUser = User.builder()
+                .id(1L)
+                .email("test@example.com")
+                .password("encodedPassword")
+                .firstName("John")
+                .lastName("Doe")
+                .role(Role.USER)
+                .enabled(false)
+                .accountStatus(AccountStatus.PENDING)
+                .build();
+        when(userRepository.save(any(User.class))).thenReturn(pendingUser);
 
         // When
         AuthResponse response = authService.register(registerRequest);
 
         // Then
         assertNotNull(response);
-        assertEquals("jwt-token", response.getToken());
+        assertNull(response.getToken());
         assertEquals(1L, response.getId());
         assertEquals("test@example.com", response.getEmail());
         assertEquals("John", response.getFirstName());
         assertEquals(Role.USER, response.getRole());
+        assertEquals(AccountStatus.PENDING, response.getAccountStatus());
+        assertNotNull(response.getMessage());
         verify(userRepository).save(any(User.class));
+        verify(jwtService, never()).generateToken(any(SecurityUser.class));
     }
 
     @Test
@@ -118,5 +134,16 @@ class AuthServiceTest {
         assertEquals(1L, response.getId());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
-}
 
+    @Test
+    void login_PendingUser_ThrowsBadRequest() {
+        user.setEnabled(false);
+        user.setAccountStatus(AccountStatus.PENDING);
+        when(userRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.of(user));
+
+        BadRequestException exception = assertThrows(BadRequestException.class, () -> authService.login(loginRequest));
+
+        assertEquals("Your account is waiting for admin approval.", exception.getMessage());
+        verify(authenticationManager, never()).authenticate(any());
+    }
+}

@@ -1,17 +1,9 @@
-import { createContext, useState, useEffect } from 'react';
+import { useState } from 'react';
 import authService from '../services/authService';
-
-export const AuthContext = createContext(null);
+import { AuthContext } from './auth-context';
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
-  }, []);
+  const [user, setUser] = useState(() => authService.getCurrentUser());
 
   const login = async (email, password) => {
     const response = await authService.login(email, password);
@@ -21,7 +13,9 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const response = await authService.register(userData);
-    setUser(response);
+    if (response.token) {
+      setUser(response);
+    }
     return response;
   };
 
@@ -44,10 +38,6 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     isAuthenticated: !!user,
   };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

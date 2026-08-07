@@ -4,7 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.test.backendprojecty.entity.AccountStatus;
 import org.test.backendprojecty.entity.Role;
+
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -18,4 +21,7 @@ public class AuthResponse {
     private String lastName;
     private String avatarUrl;
     private Role role;
+    private AccountStatus accountStatus;
+    private LocalDateTime trialExpiresAt;
+    private String message;
 }

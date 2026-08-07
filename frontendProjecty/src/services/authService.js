@@ -13,10 +13,12 @@ export const authService = {
 
   async register(userData) {
     const response = await api.post('/auth/register', userData);
-    const { token, ...user } = response.data;
-    
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+
+    if (response.data.token) {
+      const { token, ...user } = response.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+    }
     
     return response.data;
   },
