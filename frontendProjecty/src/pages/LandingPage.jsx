@@ -556,7 +556,10 @@ export const LandingPage = () => {
       <section id="connections" className="border-t border-border/80 py-20">
         <div className="container mx-auto px-4">
           <Reveal className="mb-10 text-center">
-            <p className="eyebrow-label mx-auto mb-4 w-fit">[ connected intelligence ]</p>
+            <p className="eyebrow-label mx-auto mb-2 w-fit">[ connected intelligence ]</p>
+            <span className="mx-auto mb-4 inline-flex rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+              Up Coming
+            </span>
             <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
               Ask once. Get the <span className="text-primary">whole picture.</span>
             </h2>
