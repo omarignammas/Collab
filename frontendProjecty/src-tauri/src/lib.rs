@@ -22,6 +22,7 @@ fn position_widget_under_tray<R: Runtime>(widget: &WebviewWindow<R>, icon_rect: 
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_notification::init())
+    .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

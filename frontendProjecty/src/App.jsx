@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { isTauri } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { emit } from '@tauri-apps/api/event';
+import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 import { onAction } from '@tauri-apps/plugin-notification';
+import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AuthProvider } from './context/AuthContext';
 import { FocusSessionProvider } from './context/FocusSessionContext';
 import ProtectedRoute from './components/routes/ProtectedRoute';
@@ -50,6 +52,37 @@ const SummaryDetailPage = lazy(() => import('./pages/SummaryDetailPage'));
 const QuizTakePage = lazy(() => import('./pages/QuizTakePage'));
 const WidgetPage = lazy(() => import('./pages/WidgetPage'));
 
+const GLOBAL_ASSISTANT_SHORTCUT = 'Control+Alt+Space';
+
+const GlobalAssistantShortcut = () => {
+  useEffect(() => {
+    if (!isTauri() || getCurrentWindow().label !== 'main') return undefined;
+
+    let mounted = true;
+    const setup = async () => {
+      try {
+        await register(GLOBAL_ASSISTANT_SHORTCUT, async (event) => {
+          if (!mounted || event.state !== 'Pressed') return;
+          const widget = await Window.getByLabel('widget');
+          await widget?.show();
+          await widget?.setFocus();
+          await emit('assistant-hotkey');
+        });
+      } catch (error) {
+        console.warn('Global assistant shortcut could not be registered:', error);
+      }
+    };
+    setup();
+
+    return () => {
+      mounted = false;
+      unregister(GLOBAL_ASSISTANT_SHORTCUT).catch(() => {});
+    };
+  }, []);
+
+  return null;
+};
+
 // Clicking a native notification banner should bring Collab back to the
 // foreground and jump to whatever it was about, same as clicking it in the
 // in-app bell. Only the main window registers this — the widget window loads
@@ -90,6 +123,7 @@ function App() {
       <AuthProvider>
         <FocusSessionProvider>
         <NotificationClickHandler />
+        <GlobalAssistantShortcut />
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<EntryPage />} />

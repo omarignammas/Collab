@@ -101,6 +101,17 @@ const RecordingSurface = ({ state, elapsed, onStop }) => {
   );
 };
 
+const NotificationRows = ({ notifications }) => {
+  if (notifications.length === 0) {
+    return <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground"><CheckCircle2 className="h-6 w-6 text-[hsl(var(--chart-4))]" /><p className="text-xs">You are all caught up.</p><p className="max-w-[190px] text-[10px] leading-relaxed">Ask Collab anything or start a focus session when you are ready.</p></div>;
+  }
+
+  return notifications.map((notification) => {
+    const Icon = NOTIFICATION_ICONS[notification.type] || Sparkles;
+    return <div key={notification.id} className={`flex items-start gap-2 rounded-xl px-2.5 py-2 ${notification.read ? 'bg-muted/35' : 'bg-primary/10'}`}><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-background/60 text-primary"><Icon className="h-3 w-3" /></span><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><p className="truncate text-[11px] font-medium text-foreground">{notification.title}</p>{!notification.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}</div><p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-muted-foreground">{notification.body}</p><p className="mt-1 text-[9px] text-muted-foreground/70">{formatAge(notification.createdAt)}</p></div></div>;
+  });
+};
+
 const Composer = ({ value, onChange, onSubmit, onToggleVoice, voiceState }) => (
   <form onSubmit={onSubmit} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/70 bg-background/45 p-1.5 shadow-sm">
     <MessageCircle className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -141,6 +152,8 @@ export const WidgetPage = () => {
   const [elapsed, setElapsed] = useState('00:00');
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [speaking, setSpeaking] = useState(false);
+  const [panel, setPanel] = useState('pomodoro');
+  const swipeStartX = useRef(null);
   const lastSpokenText = useRef('');
 
   const refreshDigest = async () => {
@@ -188,6 +201,24 @@ export const WidgetPage = () => {
     toggleRecording();
   };
 
+  const handleTouchStart = (event) => {
+    swipeStartX.current = event.changedTouches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event) => {
+    if (!session || swipeStartX.current == null) return;
+    const delta = event.changedTouches[0]?.clientX - swipeStartX.current;
+    swipeStartX.current = null;
+    if (delta < -42) setPanel('notifications');
+    if (delta > 42) setPanel('pomodoro');
+  };
+
+  const handleWheel = (event) => {
+    if (!session || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+    if (event.deltaX > 18) setPanel('notifications');
+    if (event.deltaX < -18) setPanel('pomodoro');
+  };
+
   useEffect(() => {
     const initialRefresh = setTimeout(refreshDigest, 0);
     const interval = setInterval(refreshDigest, 60_000);
@@ -221,6 +252,8 @@ export const WidgetPage = () => {
     lastSpokenText.current = text;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
+    const preferredVoice = window.speechSynthesis.getVoices().find((voice) => /Samantha|Karen|Daniel|Alex|Google US English/i.test(voice.name));
+    if (preferredVoice) utterance.voice = preferredVoice;
     utterance.rate = 1.02;
     utterance.pitch = 1;
     utterance.onstart = () => setSpeaking(true);
@@ -244,13 +277,25 @@ export const WidgetPage = () => {
 
   useEffect(() => {
     if (!isTauri()) return undefined;
-    const unlistenUpdate = listen('session-update', (event) => setSession(event.payload));
-    const unlistenClear = listen('session-cleared', () => setSession(null));
+    const unlistenUpdate = listen('session-update', (event) => {
+      setSession(event.payload);
+      setPanel('pomodoro');
+    });
+    const unlistenClear = listen('session-cleared', () => {
+      setSession(null);
+      setPanel('digest');
+    });
     return () => {
       unlistenUpdate.then((fn) => fn());
       unlistenClear.then((fn) => fn());
     };
   }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    const unlisten = listen('assistant-hotkey', () => toggleVoice());
+    return () => unlisten.then((fn) => fn());
+  });
 
   const header = (
     <div className="flex shrink-0 items-center justify-between">
@@ -259,7 +304,13 @@ export const WidgetPage = () => {
           <FolderKanban className="h-3 w-3" />
         </div>
         <span className="text-[11px] font-semibold tracking-tight text-foreground">Collab</span>
-      </div>
+        </div>
+      {session && (
+        <div className="ml-2 flex flex-1 items-center gap-1" aria-label="Widget pages">
+          <button type="button" title="Pomodoro" onClick={() => setPanel('pomodoro')} className={`h-1.5 rounded-full transition-all ${panel === 'pomodoro' ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
+          <button type="button" title="Notifications" onClick={() => setPanel('notifications')} className={`h-1.5 rounded-full transition-all ${panel === 'notifications' ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
+        </div>
+      )}
       <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
         {session ? <><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</> : <><Clock3 className="h-3 w-3" />Today</>}
         {unreadCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] text-destructive-foreground">{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -290,10 +341,15 @@ export const WidgetPage = () => {
 
   return (
     <div className="h-screen w-screen bg-transparent">
-      <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/75 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5">
+      <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/75 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onWheel={handleWheel} style={{ touchAction: 'pan-y' }}>
         {header}
 
-        {assistantView || (session ? (
+        {assistantView || (session && panel === 'notifications' ? (
+          <>
+            <div className="animate-in fade-in slide-in-from-left-2 flex shrink-0 items-end justify-between duration-200"><div><p className="text-sm font-semibold text-foreground">Recent activity</p><p className="mt-0.5 text-[10px] text-muted-foreground">Swipe right for your Pomodoro</p></div><Bell className="mb-1 h-4 w-4 text-muted-foreground" /></div>
+            <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5"><NotificationRows notifications={notifications} /></div>
+          </>
+        ) : session ? (
           <>
             <p className="shrink-0 text-center text-xs font-medium text-foreground/90">{session.phaseLabel}</p>
             <div className="flex flex-1 items-center justify-center">
@@ -324,12 +380,7 @@ export const WidgetPage = () => {
               <Bell className="mb-1 h-4 w-4 text-muted-foreground" />
             </div>
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
-              {notifications.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground"><CheckCircle2 className="h-6 w-6 text-[hsl(var(--chart-4))]" /><p className="text-xs">You are all caught up.</p><p className="max-w-[190px] text-[10px] leading-relaxed">Ask Collab anything or start a focus session when you are ready.</p></div>
-              ) : notifications.map((notification) => {
-                const Icon = NOTIFICATION_ICONS[notification.type] || Sparkles;
-                return <div key={notification.id} className={`flex items-start gap-2 rounded-xl px-2.5 py-2 ${notification.read ? 'bg-muted/35' : 'bg-primary/10'}`}><span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-background/60 text-primary"><Icon className="h-3 w-3" /></span><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><p className="truncate text-[11px] font-medium text-foreground">{notification.title}</p>{!notification.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}</div><p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-muted-foreground">{notification.body}</p><p className="mt-1 text-[9px] text-muted-foreground/70">{formatAge(notification.createdAt)}</p></div></div>;
-              })}
+              <NotificationRows notifications={notifications} />
             </div>
           </>
         ))}
