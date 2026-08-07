@@ -28,7 +28,7 @@ public class AdminBootstrapConfig {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.admin.email:admin@trycollab.space}")
+    @Value("${app.admin.email:omar@collab.ap}")
     private String adminEmail;
 
     @Value("${app.admin.password:}")
