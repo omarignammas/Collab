@@ -52,7 +52,7 @@ const SummaryDetailPage = lazy(() => import('./pages/SummaryDetailPage'));
 const QuizTakePage = lazy(() => import('./pages/QuizTakePage'));
 const WidgetPage = lazy(() => import('./pages/WidgetPage'));
 
-const GLOBAL_ASSISTANT_SHORTCUT = 'Control+Alt+Space';
+const GLOBAL_ASSISTANT_SHORTCUTS = ['Control+Alt+C', 'Control+Alt+Space'];
 
 const GlobalAssistantShortcut = () => {
   useEffect(() => {
@@ -61,13 +61,22 @@ const GlobalAssistantShortcut = () => {
     let mounted = true;
     const setup = async () => {
       try {
-        await register(GLOBAL_ASSISTANT_SHORTCUT, async (event) => {
+        const onAssistantShortcut = async (event) => {
           if (!mounted || event.state !== 'Pressed') return;
           const widget = await Window.getByLabel('widget');
           await widget?.show();
           await widget?.setFocus();
           await emit('assistant-hotkey');
-        });
+        };
+
+        const results = await Promise.allSettled(
+          GLOBAL_ASSISTANT_SHORTCUTS.map((shortcut) => register(shortcut, onAssistantShortcut))
+        );
+        const registeredAny = results.some((result) => result.status === 'fulfilled');
+        if (!registeredAny) {
+          const firstError = results.find((result) => result.status === 'rejected')?.reason;
+          throw firstError || new Error('No assistant shortcut could be registered');
+        }
       } catch (error) {
         console.warn('Global assistant shortcut could not be registered:', error);
       }
@@ -76,7 +85,7 @@ const GlobalAssistantShortcut = () => {
 
     return () => {
       mounted = false;
-      unregister(GLOBAL_ASSISTANT_SHORTCUT).catch(() => {});
+      GLOBAL_ASSISTANT_SHORTCUTS.forEach((shortcut) => unregister(shortcut).catch(() => {}));
     };
   }, []);
 

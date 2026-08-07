@@ -10,8 +10,8 @@ const pickSupportedMimeType = () =>
 
 const MAX_RECORDING_MS = 120_000;
 const SILENCE_THRESHOLD = 6; // avg sample deviation from center (0-128 scale) counted as "quiet"
-const SILENCE_DURATION_MS = 3_000; // leave room for a natural pause before auto-stopping
-const SILENCE_GRACE_MS = 1_000; // give the speaker a full beat before silence detection starts
+const SILENCE_DURATION_MS = 5_000; // leave room for a natural pause before auto-stopping
+const SILENCE_GRACE_MS = 1_500; // give the speaker a full beat before silence detection starts
 
 // Records from the mic, auto-stops after a stretch of silence (or hits the
 // hard cap), transcribes, and hands the text to onTranscribed. Shared by the

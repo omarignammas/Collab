@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
 import {
@@ -192,15 +192,23 @@ export const WidgetPage = () => {
     }
   };
 
-  const { state: voiceState, toggleRecording, stopRecording } = useVoiceRecorder({
+  const { state: voiceState, toggleRecording, stopRecording, startRecording } = useVoiceRecorder({
     onTranscribed: runAssistant,
     onError: () => setAssistantResult({ text: 'Microphone access or transcription failed. Please try again.', kind: 'error' }),
   });
 
+  const beginVoice = useCallback(() => {
+    if (voiceState !== 'idle') return;
+    setPanel('notifications');
+    setAssistantResult(null);
+    setRecordingStartedAt(Date.now());
+    startRecording();
+  }, [startRecording, voiceState]);
+
   const toggleVoice = () => {
     if (voiceState === 'idle') {
-      setAssistantResult(null);
-      setRecordingStartedAt(Date.now());
+      beginVoice();
+      return;
     } else if (voiceState === 'recording') {
       stopRecording();
     }
@@ -246,14 +254,14 @@ export const WidgetPage = () => {
 
   useEffect(() => {
     const handleShortcut = (event) => {
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'c') {
+      if (event.ctrlKey && (event.altKey || event.shiftKey) && event.key.toLowerCase() === 'c') {
         event.preventDefault();
-        toggleVoice();
+        beginVoice();
       }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  });
+  }, [beginVoice]);
 
   useEffect(() => {
     if (!assistantResult || assistantResult.kind === 'working' || !voiceReplies || !window.speechSynthesis) return undefined;
@@ -307,11 +315,10 @@ export const WidgetPage = () => {
   useEffect(() => {
     if (!isTauri()) return undefined;
     const unlisten = listen('assistant-hotkey', () => {
-      setPanel('notifications');
-      toggleVoice();
+      beginVoice();
     });
     return () => unlisten.then((fn) => fn());
-  });
+  }, [beginVoice]);
 
   const header = (
     <div className="flex shrink-0 items-center justify-between">
@@ -371,8 +378,11 @@ export const WidgetPage = () => {
           </>
         ) : session ? (
           <>
-            <p className="shrink-0 text-center text-xs font-medium text-foreground/90">{session.phaseLabel}</p>
-            <div className="flex flex-1 items-center justify-center">
+            <div className="shrink-0 text-center">
+              <p className="text-xs font-semibold text-foreground/90">{session.phaseLabel}</p>
+              {session.roomCode && <p className="mt-0.5 font-numeric text-[10px] text-muted-foreground">{session.roomCode}</p>}
+            </div>
+            <div className="flex flex-1 items-center justify-center py-1">
               <CircularProgress percentage={session.percentage} size={124} strokeWidth={9} color="orange">
                 <div className="flex flex-col items-center">
                   <p className="font-numeric text-2xl font-bold tabular-nums text-foreground">{session.remainingLabel}</p>
@@ -380,17 +390,9 @@ export const WidgetPage = () => {
                 </div>
               </CircularProgress>
             </div>
-            {session.roomCode && <div className="flex shrink-0 items-center justify-center gap-1 text-[10px] text-muted-foreground"><Users className="h-3 w-3" /><span className="font-numeric">{session.roomCode}</span></div>}
-            <div className="flex shrink-0 items-center gap-1.5">
-              <button type="button" onClick={() => sendAction('open-chat')} title="Open chat" className="flex flex-1 items-start gap-1.5 rounded-2xl bg-muted/60 px-3 py-2 text-left transition-colors hover:bg-muted">
-                <MessageCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <p className="line-clamp-2 text-xs leading-snug text-foreground/80">{session.latestMessage || 'No messages yet'}</p>
-              </button>
-              <button type="button" onClick={() => setPanel('notifications')} title="Open notifications and assistant" className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-secondary text-foreground hover:bg-secondary/70"><Bell className="h-3.5 w-3.5" />{unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-destructive" />}</button>
-            </div>
             <div className="flex shrink-0 gap-2">
-              <Button variant="secondary" size="sm" className="flex-1 rounded-full" onClick={() => sendAction('leave')}><DoorOpen className="h-3.5 w-3.5" />Leave</Button>
-              {session.isHost && <Button variant="destructive" size="sm" className="flex-1 rounded-full bg-destructive/10 text-destructive shadow-none hover:bg-destructive/20" onClick={() => sendAction('end')}><Square className="h-3.5 w-3.5" />End</Button>}
+              <Button variant="secondary" size="sm" className="h-11 flex-1 rounded-full" onClick={() => sendAction('leave')}><DoorOpen className="h-3.5 w-3.5" />Leave</Button>
+              {session.isHost && <Button variant="destructive" size="sm" className="h-11 flex-1 rounded-full bg-destructive/10 text-destructive shadow-none hover:bg-destructive/20" onClick={() => sendAction('end')}><Square className="h-3.5 w-3.5" />End</Button>}
             </div>
           </>
         ) : (
