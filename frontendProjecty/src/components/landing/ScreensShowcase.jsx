@@ -250,7 +250,7 @@ const CoursesScreen = () => {
               </p>
               <p className="text-[10px] text-muted-foreground">Owner: {project.owner} · {project.type}</p>
             </div>
-            <CircularProgress percentage={project.progress} size={44} strokeWidth={4} color="blue" />
+            <CircularProgress percentage={project.progress} size={44} strokeWidth={4} color="orange" />
           </div>
 
           <div className="mb-3 grid grid-cols-3 gap-2">
