@@ -153,7 +153,8 @@ export const WidgetPage = () => {
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [speaking, setSpeaking] = useState(false);
   const [panel, setPanel] = useState('pomodoro');
-  const swipeStartX = useRef(null);
+  const [conversation, setConversation] = useState([]);
+  const swipeStart = useRef(null);
   const lastSpokenText = useRef('');
 
   const refreshDigest = async () => {
@@ -173,16 +174,20 @@ export const WidgetPage = () => {
     const trimmed = rawCommand.trim();
     if (!trimmed) return;
     setCommand('');
+    setConversation((previous) => [...previous, { role: 'user', text: trimmed }].slice(-6));
     setAssistantResult({ text: trimmed, kind: 'working' });
     try {
       const result = await assistantCommandService.execute(trimmed);
       setAssistantResult(result);
+      setConversation((previous) => [...previous, { role: 'assistant', text: result.text }].slice(-6));
       refreshDigest();
     } catch (error) {
+      const errorText = error.response?.data?.message || 'I could not complete that command. Please try again.';
       setAssistantResult({
-        text: error.response?.data?.message || 'I could not complete that command. Please try again.',
+        text: errorText,
         kind: 'error',
       });
+      setConversation((previous) => [...previous, { role: 'assistant', text: errorText }].slice(-6));
     }
   };
 
@@ -202,21 +207,25 @@ export const WidgetPage = () => {
   };
 
   const handleTouchStart = (event) => {
-    swipeStartX.current = event.changedTouches[0]?.clientX ?? null;
+    const touch = event.changedTouches[0];
+    swipeStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
   };
 
   const handleTouchEnd = (event) => {
-    if (!session || swipeStartX.current == null) return;
-    const delta = event.changedTouches[0]?.clientX - swipeStartX.current;
-    swipeStartX.current = null;
-    if (delta < -42) setPanel('notifications');
-    if (delta > 42) setPanel('pomodoro');
+    if (!session || swipeStart.current == null) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - swipeStart.current.x;
+    const deltaY = touch.clientY - swipeStart.current.y;
+    swipeStart.current = null;
+    if (Math.abs(deltaX) < 72 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
+    if (deltaX < 0) setPanel('notifications');
+    if (deltaX > 0) setPanel('pomodoro');
   };
 
   const handleWheel = (event) => {
-    if (!session || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-    if (event.deltaX > 18) setPanel('notifications');
-    if (event.deltaX < -18) setPanel('pomodoro');
+    if (!session || Math.abs(event.deltaX) < 40 || Math.abs(event.deltaX) < Math.abs(event.deltaY) * 2.5) return;
+    if (event.deltaX > 0) setPanel('notifications');
+    if (event.deltaX < 0) setPanel('pomodoro');
   };
 
   useEffect(() => {
@@ -331,8 +340,12 @@ export const WidgetPage = () => {
           </button>
         )}
       </div>
-      <div className="rounded-2xl bg-muted/60 px-3 py-3 text-xs leading-relaxed text-foreground/85">
-        <p>{assistantResult.text}</p>
+      <div className="min-h-0 max-h-44 space-y-2 overflow-y-auto rounded-2xl bg-muted/60 px-3 py-3 text-xs leading-relaxed text-foreground/85">
+        {conversation.map((message, index) => (
+          <div key={`${message.role}-${index}`} className={message.role === 'user' ? 'ml-4 rounded-xl bg-primary/10 px-2.5 py-2 text-foreground' : 'mr-2 rounded-xl bg-background/45 px-2.5 py-2 text-foreground/85'}>
+            {message.text}
+          </div>
+        ))}
         {speaking && <span className="mt-2 flex items-center gap-1.5 text-[10px] text-primary"><Volume2 className="h-3 w-3 animate-pulse" />Speaking</span>}
       </div>
       <button type="button" onClick={() => setAssistantResult(null)} className="text-center text-[10px] font-medium text-muted-foreground hover:text-foreground">Back to today</button>
@@ -385,8 +398,7 @@ export const WidgetPage = () => {
           </>
         ))}
 
-        {!session && !assistantView && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
-        {session && !assistantView && <div className="shrink-0"><Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} /></div>}
+        {(!session || assistantResult) && voiceState === 'idle' && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
       </div>
     </div>
   );
