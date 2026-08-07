@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
-import { DoorOpen, FolderKanban, Loader2, MessageCircle, Mic, Square, Timer, Users } from 'lucide-react';
+import { DoorOpen, FolderKanban, Loader2, MessageCircle, Mic, Square, Timer, Users, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { CircularProgress } from '../components/shared/CircularProgress';
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
+import assistantCommandService from '../services/assistantCommandService';
 
 const sendAction = (action, extra) => {
   if (isTauri()) emit('widget-action', { action, ...extra });
@@ -12,18 +13,25 @@ const sendAction = (action, extra) => {
 
 export const WidgetPage = () => {
   const [session, setSession] = useState(null);
+  const [assistantResult, setAssistantResult] = useState(null);
 
-  // Speak-and-go, same as the main app's mic button — the widget has no
-  // composer to review in, so this only ever sends or silently drops it (no
-  // toast host in a window this small). The widget's mic always asks Collab
-  // directly (forceAi on the backend), so bring the main window forward and
-  // jump to the room chat right away — that's where the reply actually shows
-  // up, not in this compact popover.
+  // The widget mic is a direct command surface. Room chat keeps its own voice
+  // flow; this surface executes the small, safe set of app commands locally
+  // through the authenticated API and leaves unsupported requests untouched.
   const { state: voiceState, toggleRecording } = useVoiceRecorder({
-    onTranscribed: (trimmed) => {
-      sendAction('send-message', { text: trimmed });
-      sendAction('open-chat');
+    onTranscribed: async (trimmed) => {
+      setAssistantResult({ text: `You said: ${trimmed}`, kind: 'working' });
+      try {
+        const result = await assistantCommandService.execute(trimmed);
+        setAssistantResult(result);
+      } catch (error) {
+        setAssistantResult({
+          text: error.response?.data?.message || 'I could not complete that command. Please try again.',
+          kind: 'error',
+        });
+      }
     },
+    onError: () => setAssistantResult({ text: 'Microphone access or transcription failed. Please try again.', kind: 'error' }),
   });
 
   // This window is created with transparent:true at the OS level, but the
@@ -42,6 +50,17 @@ export const WidgetPage = () => {
       html.style.background = prevHtml;
     };
   }, []);
+
+  useEffect(() => {
+    const handleShortcut = (event) => {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        toggleRecording();
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [toggleRecording]);
 
   useEffect(() => {
     if (!isTauri()) return undefined;
@@ -66,7 +85,7 @@ export const WidgetPage = () => {
             </div>
             <span className="text-[11px] font-semibold tracking-tight text-foreground">Collab</span>
           </div>
-          {session && (
+          {session && !assistantResult && (
             <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />
               Live
@@ -74,7 +93,24 @@ export const WidgetPage = () => {
           )}
         </div>
 
-        {session ? (
+        {assistantResult ? (
+          <div className="flex flex-1 flex-col justify-center gap-3">
+            <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>{assistantResult.kind === 'working' ? 'Collab is working...' : 'Collab assistant'}</span>
+            </div>
+            <p className="rounded-2xl bg-muted/60 px-3 py-3 text-xs leading-relaxed text-foreground/85">
+              {assistantResult.text}
+            </p>
+            <button
+              type="button"
+              onClick={() => setAssistantResult(null)}
+              className="text-center text-[10px] font-medium text-muted-foreground hover:text-foreground"
+            >
+              Back to widget
+            </button>
+          </div>
+        ) : session ? (
           <>
             <p className="shrink-0 text-center text-xs font-medium text-foreground/90">{session.phaseLabel}</p>
 
@@ -110,7 +146,7 @@ export const WidgetPage = () => {
                 type="button"
                 onClick={toggleRecording}
                 disabled={voiceState === 'transcribing'}
-                title={voiceState === 'recording' ? 'Stop and send' : 'Speak a message'}
+                title={voiceState === 'recording' ? 'Stop command' : 'Speak a Collab command'}
                 className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${
                   voiceState === 'recording'
                     ? 'border-destructive/40 bg-destructive/10 text-destructive'
