@@ -33,6 +33,7 @@ import AiReportShowcase from '../components/landing/AiReportShowcase';
 import SummaryQuizShowcase from '../components/landing/SummaryQuizShowcase';
 import StepsTimeline from '../components/landing/StepsTimeline';
 import DesktopShowcase from '../components/landing/DesktopShowcase';
+import DesktopAssistantShowcase from '../components/landing/DesktopAssistantShowcase';
 import RotatingWord from '../components/landing/RotatingWord';
 import { AiChatAnimation, NotesAnimation, TasksBoardAnimation, RoadmapAnimation } from '../components/landing/FeatureAnimations';
 import HeroNotifications from '../components/landing/HeroNotifications';
@@ -47,6 +48,7 @@ const NAV_LINKS = [
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'Process' },
   { href: '#desktop', label: 'Desktop' },
+  { href: '#connections', label: 'Connections' },
   { href: '#waitlist', label: 'Waitlist' },
 ];
 
@@ -548,6 +550,25 @@ export const LandingPage = () => {
               <DesktopShowcase />
             </Reveal>
           </div>
+        </div>
+      </section>
+
+      {/* Desktop intelligence: voice requests across connected tools */}
+      <section id="connections" className="border-t border-border/80 py-20">
+        <div className="container mx-auto px-4">
+          <Reveal className="mb-10 text-center">
+            <p className="eyebrow-label mx-auto mb-4 w-fit">[ connected intelligence ]</p>
+            <h2 className="text-3xl font-bold text-foreground sm:text-4xl">
+              Ask once. Get the <span className="text-primary">whole picture.</span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+              On desktop, Collab sits above your work. Ask by voice for the latest Gmail emails, unanswered Teams messages,
+              or the next thing waiting in Slack, Trello, and Discord.
+            </p>
+          </Reveal>
+          <Reveal delay={100}>
+            <DesktopAssistantShowcase />
+          </Reveal>
         </div>
       </section>
 
