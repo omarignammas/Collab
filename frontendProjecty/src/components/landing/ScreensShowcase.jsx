@@ -118,58 +118,206 @@ const DashboardScreen = () => (
   </div>
 );
 
-const CoursesScreen = () => (
-  <div className="p-4 sm:p-5">
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-base font-bold text-foreground">My Projects Portfolio</p>
-        <p className="text-xs text-muted-foreground">Manage your courses and tasks</p>
-      </div>
-      <span className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">
-        <Plus className="h-3 w-3" />
-        New Course
-      </span>
-    </div>
+const PROJECT_PORTFOLIO = [
+  {
+    name: 'Launch landing refresh',
+    type: 'Marketing sprint',
+    progress: 64,
+    health: 'On track',
+    due: 'Fri',
+    owner: 'Omar',
+    color: 'bg-[hsl(var(--chart-1))]',
+    team: ['OM', 'MR', 'DN'],
+    tasks: [
+      { title: 'Rewrite hero message', assignee: 'Mira', priority: 'high', status: 'Assigned' },
+      { title: 'Build app animation', assignee: 'Omar', priority: 'medium', status: 'In progress' },
+      { title: 'QA mobile spacing', assignee: 'Deniz', priority: 'low', status: 'Review' },
+    ],
+  },
+  {
+    name: 'AI study report',
+    type: 'Research workflow',
+    progress: 48,
+    health: 'Needs review',
+    due: 'Mon',
+    owner: 'Mira',
+    color: 'bg-[hsl(var(--chart-4))]',
+    team: ['MR', 'OM'],
+    tasks: [
+      { title: 'Collect source links', assignee: 'Mira', priority: 'medium', status: 'Assigned' },
+      { title: 'Generate benchmark table', assignee: 'Collab', priority: 'high', status: 'In progress' },
+      { title: 'Summarize final report', assignee: 'Omar', priority: 'medium', status: 'Queued' },
+    ],
+  },
+  {
+    name: 'Focus room beta',
+    type: 'Product release',
+    progress: 78,
+    health: 'Shipping',
+    due: 'Today',
+    owner: 'Deniz',
+    color: 'bg-[hsl(var(--chart-3))]',
+    team: ['DN', 'OM', 'CL'],
+    tasks: [
+      { title: 'Invite test cohort', assignee: 'Deniz', priority: 'high', status: 'Assigned' },
+      { title: 'Review session notes', assignee: 'Omar', priority: 'medium', status: 'In progress' },
+      { title: 'Publish release brief', assignee: 'Collab', priority: 'low', status: 'Done' },
+    ],
+  },
+];
 
-    <div className="mb-4 inline-flex gap-1 rounded-lg border border-border/70 bg-card/60 p-1 text-xs">
-      <span className="rounded-md bg-primary px-2.5 py-1 font-medium text-primary-foreground">Summer 2026</span>
-      <span className="rounded-md px-2.5 py-1 text-muted-foreground">all</span>
-    </div>
+const FLOW_STAGES = [
+  { label: 'Assigned', detail: 'Owner picked' },
+  { label: 'In progress', detail: 'Work starts' },
+  { label: 'Done', detail: 'Portfolio updates' },
+];
 
-    <div className="mb-4 grid grid-cols-4 gap-2.5">
-      {[
-        { label: 'overall progress', pct: 38, color: 'blue' },
-        { label: 'total courses', pct: 0, color: 'purple' },
-        { label: 'tasks completed', pct: 38, color: 'green' },
-        { label: 'courses achieved', pct: 0, color: 'orange' },
-      ].map((s) => (
-        <div key={s.label} className="flex flex-col items-center gap-1.5 rounded-lg border border-border/70 bg-card/60 py-3">
-          <CircularProgress percentage={s.pct} size={44} strokeWidth={4} color={s.color} />
-          <p className="text-center text-[9px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
+const CoursesScreen = () => {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setTick((value) => value + 1), 1500);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const projectIndex = Math.floor(tick / FLOW_STAGES.length) % PROJECT_PORTFOLIO.length;
+  const flowIndex = tick % FLOW_STAGES.length;
+  const project = PROJECT_PORTFOLIO[projectIndex];
+  const movingTask = project.tasks[flowIndex % project.tasks.length];
+
+  return (
+    <div className="p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-base font-bold text-foreground">My Projects Portfolio</p>
+          <p className="text-xs text-muted-foreground">Projects, owners, assigned tasks, and progress in one place.</p>
         </div>
-      ))}
-    </div>
+        <span className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">
+          <Plus className="h-3 w-3" />
+          New Project
+        </span>
+      </div>
 
-    <div className="grid grid-cols-3 gap-3">
-      {[
-        { title: 'Linear Algebra', dot: 'bg-[hsl(var(--status-done-fg))]', pct: 33, done: 1, total: 3 },
-        { title: 'Microeconomics', dot: 'bg-[hsl(var(--priority-medium-fg))]', pct: 33, done: 1, total: 3 },
-        { title: 'Data Structures', dot: 'bg-[hsl(var(--status-in-progress-fg))]', pct: 40, done: 2, total: 5 },
-      ].map((c) => (
-        <div key={c.title} className="rounded-lg border border-border/70 bg-card/60 p-3">
-          <p className="mb-2 flex items-center gap-1.5 truncate text-xs font-medium text-foreground">
-            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${c.dot}`} />
-            {c.title}
-          </p>
-          <div className="flex items-center gap-2">
-            <CircularProgress percentage={c.pct} size={38} strokeWidth={4} color="blue" />
-            <p className="text-[10px] text-muted-foreground">{c.done} completed<br />{c.total} total</p>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[0.88fr_1.12fr]">
+        <div className="space-y-2.5">
+          {PROJECT_PORTFOLIO.map((item, index) => {
+            const activeProject = index === projectIndex;
+            return (
+              <div
+                key={item.name}
+                className={`rounded-lg border p-3 transition-all duration-500 ${
+                  activeProject
+                    ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/10'
+                    : 'border-border/70 bg-card/60'
+                }`}
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 truncate text-xs font-semibold text-foreground">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${item.color}`} />
+                      {item.name}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">{item.type}</p>
+                  </div>
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[8px] ${activeProject ? 'bg-primary text-primary-foreground' : 'bg-accent text-muted-foreground'}`}>
+                    {item.health}
+                  </span>
+                </div>
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${item.progress}%` }} />
+                  </div>
+                  <span className="font-numeric text-[9px] font-semibold text-foreground">{item.progress}%</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[9px] text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {item.team.length} members
+                  </span>
+                  <span>Due {item.due}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="rounded-lg border border-border/70 bg-card/60 p-3">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
+                <FolderKanban className="h-4 w-4 shrink-0 text-primary" />
+                {project.name}
+              </p>
+              <p className="text-[10px] text-muted-foreground">Owner: {project.owner} · {project.type}</p>
+            </div>
+            <CircularProgress percentage={project.progress} size={44} strokeWidth={4} color="blue" />
+          </div>
+
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            {FLOW_STAGES.map((stage, index) => (
+              <div
+                key={stage.label}
+                className={`min-h-[58px] rounded-lg border p-2 transition-all duration-500 ${
+                  index === flowIndex
+                    ? 'border-primary/50 bg-primary/10'
+                    : index < flowIndex
+                    ? 'border-[hsl(var(--status-done-fg)/0.35)] bg-[hsl(var(--status-done-bg))]'
+                    : 'border-border/60 bg-background/50'
+                }`}
+              >
+                <p className="text-[10px] font-semibold text-foreground">{stage.label}</p>
+                <p className="mt-0.5 text-[8px] text-muted-foreground">{stage.detail}</p>
+                {index === flowIndex && (
+                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-primary/15">
+                    <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold text-primary">
+                <Sparkles className="h-3 w-3" />
+                Live task flow
+              </p>
+              <span className="rounded bg-background/70 px-1.5 py-0.5 text-[8px] text-muted-foreground">{FLOW_STAGES[flowIndex].label}</span>
+            </div>
+            <p className="truncate text-[11px] font-medium text-foreground">{movingTask.title}</p>
+            <p className="text-[9px] text-muted-foreground">Assigned to {movingTask.assignee} · {movingTask.priority} priority</p>
+          </div>
+
+          <div className="space-y-1.5">
+            {project.tasks.map((task, index) => {
+              const activeTask = index === flowIndex;
+              const doneTask = task.status === 'Done' || index < flowIndex;
+              return (
+                <div
+                  key={task.title}
+                  className={`flex items-center justify-between gap-2 rounded-md border px-2.5 py-2 transition-all duration-500 ${
+                    activeTask ? 'border-primary/50 bg-background shadow-sm' : 'border-border/60 bg-background/50'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className={`truncate text-[10px] font-medium ${doneTask ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{task.title}</p>
+                    <p className="text-[8px] text-muted-foreground">{task.assignee}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span className={`pill-priority-${task.priority} rounded px-1 py-0.5 text-[8px] capitalize`}>{task.priority}</span>
+                    <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${doneTask ? 'border-[hsl(var(--status-done-fg))] bg-[hsl(var(--status-done-fg))]' : 'border-border'}`}>
+                      {doneTask && <Check className="h-2.5 w-2.5 text-white" />}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const STATUS_PILL = { progress: 'pill-in-progress', overdue: 'pill-overdue', done: 'pill-done' };
 const STATUS_LABEL = { progress: 'In Progress', overdue: 'Overdue', done: 'Done' };
