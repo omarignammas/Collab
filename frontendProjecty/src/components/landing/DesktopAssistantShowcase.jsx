@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
   AudioLines,
-  BarChart3,
   CheckCircle2,
-  FileText,
   FolderKanban,
   LoaderCircle,
   Mic,
   Search,
-  Share2,
   Sparkles,
-  Users,
   Volume2,
 } from 'lucide-react';
 
@@ -100,13 +96,6 @@ const RESULTS = [
   { app: 'Trello', title: '2 cards changed status', detail: 'A review task moved to blocked this morning.', icon: TOOLS[2].icon, tone: '#0052cc' },
 ];
 
-const REPORT_STEPS = [
-  { icon: Search, label: 'Collect', detail: 'Pull signals from connected tools.' },
-  { icon: BarChart3, label: 'Benchmark', detail: 'Compare progress, blockers, and response time.' },
-  { icon: FileText, label: 'Report', detail: 'Generate a clean brief with summaries.' },
-  { icon: Share2, label: 'Share', detail: 'Send it to the team workspace.' },
-];
-
 const BrandLogo = ({ icon, label, className = 'h-6 w-6' }) => (
   <svg
     className={className}
@@ -173,68 +162,12 @@ const ResultItem = ({ item, visible, index }) => (
   </div>
 );
 
-const SoonReportBuilder = ({ activeStep }) => (
-  <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/10 p-4">
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <div>
-        <p className="text-sm font-semibold text-foreground">Reports & benchmarks</p>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">Generate, compare, and share with the team.</p>
-      </div>
-      <span className="rounded-full border border-primary/25 bg-background/70 px-2 py-1 text-[10px] font-semibold text-primary">Soon</span>
-    </div>
-
-    <div className="grid grid-cols-4 gap-1.5">
-      {REPORT_STEPS.map((step, index) => {
-        const Icon = step.icon;
-        const complete = index < activeStep;
-        const active = index === activeStep;
-        return (
-          <div
-            key={step.label}
-            className={`min-h-[70px] rounded-xl border p-2 transition-all duration-500 ${
-              active
-                ? 'border-primary/50 bg-background shadow-sm'
-                : complete
-                ? 'border-emerald-500/30 bg-emerald-500/10'
-                : 'border-border/60 bg-background/45'
-            }`}
-          >
-            <span className={`mb-2 flex h-6 w-6 items-center justify-center rounded-lg ${active ? 'bg-primary text-primary-foreground' : complete ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'}`}>
-              {complete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className={`h-3.5 w-3.5 ${active ? 'animate-pulse' : ''}`} />}
-            </span>
-            <p className="truncate text-[9px] font-semibold text-foreground">{step.label}</p>
-            <p className="mt-0.5 line-clamp-2 text-[8px] leading-snug text-muted-foreground">{step.detail}</p>
-          </div>
-        );
-      })}
-    </div>
-
-    <div className="mt-3 rounded-xl border border-border/60 bg-background/70 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
-          <FileText className="h-3.5 w-3.5 text-primary" />
-          Weekly growth benchmark
-        </p>
-        <span className="font-numeric text-[10px] text-muted-foreground">{Math.min(100, 28 + activeStep * 24)}%</span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${Math.min(100, 28 + activeStep * 24)}%` }} />
-      </div>
-      <div className="mt-2 flex items-center justify-between text-[9px] text-muted-foreground">
-        <span className="flex items-center gap-1"><BarChart3 className="h-3 w-3" />3 competitors</span>
-        <span className="flex items-center gap-1"><Users className="h-3 w-3" />Shared with 4</span>
-      </div>
-    </div>
-  </div>
-);
-
 export const DesktopAssistantShowcase = () => {
   const [stage, setStage] = useState(0);
   const isSearching = stage === 2;
   const isListening = stage === 1;
   const hasAnswer = stage === 3;
   const toolsActive = stage >= 2;
-  const reportStep = stage % REPORT_STEPS.length;
 
   useEffect(() => {
     const timer = setInterval(() => setStage((current) => (current + 1) % STAGES.length), 3300);
@@ -330,7 +263,19 @@ export const DesktopAssistantShowcase = () => {
             </div>
           </div>
 
-          <SoonReportBuilder activeStep={reportStep} />
+          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/10 p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">One ask becomes a clean action list.</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Collab can answer aloud, keep the summary in the widget, and turn important results into reminders or tasks.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
