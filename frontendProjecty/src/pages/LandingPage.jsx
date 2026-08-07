@@ -48,7 +48,6 @@ const NAV_LINKS = [
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'Process' },
   { href: '#desktop', label: 'Desktop' },
-  { href: '#connections', label: 'Connections' },
   { href: '#waitlist', label: 'Waitlist' },
 ];
 
