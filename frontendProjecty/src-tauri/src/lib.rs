@@ -2,6 +2,7 @@ use tauri::image::Image;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
   Listener, Manager, PhysicalPosition, PhysicalSize, Position, Runtime, WebviewWindow,
+  WindowEvent,
 };
 
 fn position_widget_under_tray<R: Runtime>(widget: &WebviewWindow<R>, icon_rect: &tauri::Rect) {
@@ -32,10 +33,17 @@ pub fn run() {
         )?;
       }
 
-        // The widget window is created hidden by tauri.conf.json and toggled
-        // by the tray icon below. It intentionally stays visible when another
-        // app becomes active so it remains useful over fullscreen workspaces.
+      // The widget window is created hidden by tauri.conf.json and toggled
+      // by the tray icon below. Losing focus dismisses it like a native
+      // menu-bar popover, while the global shortcut can reopen it anywhere.
       if let Some(widget) = app.get_webview_window("widget") {
+        let widget_for_focus = widget.clone();
+        widget.on_window_event(move |event| {
+          if matches!(event, WindowEvent::Focused(false)) {
+            let _ = widget_for_focus.hide();
+          }
+        });
+
         // Real NSVisualEffectView frosted glass, not a CSS approximation. The
         // radius must match WidgetPage.jsx's rounded-[28px] card exactly —
         // the native blur view fills the whole window, and the webview's

@@ -155,6 +155,7 @@ export const WidgetPage = () => {
   const [panel, setPanel] = useState('pomodoro');
   const [conversation, setConversation] = useState([]);
   const swipeStart = useRef(null);
+  const sessionRef = useRef(null);
   const lastSpokenText = useRef('');
 
   const refreshDigest = async () => {
@@ -224,8 +225,8 @@ export const WidgetPage = () => {
 
   const handleWheel = (event) => {
     if (!session || Math.abs(event.deltaX) < 40 || Math.abs(event.deltaX) < Math.abs(event.deltaY) * 2.5) return;
-    if (event.deltaX > 0) setPanel('notifications');
-    if (event.deltaX < 0) setPanel('pomodoro');
+    if (event.deltaX < 0) setPanel('notifications');
+    if (event.deltaX > 0) setPanel('pomodoro');
   };
 
   useEffect(() => {
@@ -287,10 +288,13 @@ export const WidgetPage = () => {
   useEffect(() => {
     if (!isTauri()) return undefined;
     const unlistenUpdate = listen('session-update', (event) => {
+      const wasInactive = sessionRef.current == null;
+      sessionRef.current = event.payload;
       setSession(event.payload);
-      setPanel('pomodoro');
+      if (wasInactive) setPanel('pomodoro');
     });
     const unlistenClear = listen('session-cleared', () => {
+      sessionRef.current = null;
       setSession(null);
       setPanel('digest');
     });
@@ -302,7 +306,10 @@ export const WidgetPage = () => {
 
   useEffect(() => {
     if (!isTauri()) return undefined;
-    const unlisten = listen('assistant-hotkey', () => toggleVoice());
+    const unlisten = listen('assistant-hotkey', () => {
+      setPanel('notifications');
+      toggleVoice();
+    });
     return () => unlisten.then((fn) => fn());
   });
 
@@ -379,7 +386,7 @@ export const WidgetPage = () => {
                 <MessageCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <p className="line-clamp-2 text-xs leading-snug text-foreground/80">{session.latestMessage || 'No messages yet'}</p>
               </button>
-              <button type="button" onClick={toggleVoice} title="Speak a Collab command" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-secondary text-foreground hover:bg-secondary/70"><Mic className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => setPanel('notifications')} title="Open notifications and assistant" className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-secondary text-foreground hover:bg-secondary/70"><Bell className="h-3.5 w-3.5" />{unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-destructive" />}</button>
             </div>
             <div className="flex shrink-0 gap-2">
               <Button variant="secondary" size="sm" className="flex-1 rounded-full" onClick={() => sendAction('leave')}><DoorOpen className="h-3.5 w-3.5" />Leave</Button>
@@ -398,7 +405,7 @@ export const WidgetPage = () => {
           </>
         ))}
 
-        {(!session || assistantResult) && voiceState === 'idle' && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
+        {(!session || panel === 'notifications' || assistantResult) && voiceState === 'idle' && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
       </div>
     </div>
   );
