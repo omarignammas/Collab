@@ -38,7 +38,7 @@ export const RegisterPage = () => {
 
     try {
       const response = await register(formData);
-      setSuccessMessage(response.message || 'Your request was sent. An admin will approve your 15-day trial.');
+      setSuccessMessage(response.message || 'You joined the waitlist. An admin will review your request, and once approved you will get a 7-day trial.');
       setFormData({
         firstName: '',
         lastName: '',

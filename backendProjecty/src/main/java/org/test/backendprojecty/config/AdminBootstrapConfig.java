@@ -22,7 +22,7 @@ import java.util.Base64;
 public class AdminBootstrapConfig {
 
     private static final Logger log = LoggerFactory.getLogger(AdminBootstrapConfig.class);
-    private static final int TRIAL_DAYS = 15;
+    private static final int TRIAL_DAYS = 7;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;

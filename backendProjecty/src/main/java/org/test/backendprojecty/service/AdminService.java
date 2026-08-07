@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 public class AdminService {
 
     private static final int TREND_DAYS = 14;
-    private static final int TRIAL_DAYS = 15;
+    private static final int TRIAL_DAYS = 7;
 
     private final UserRepository userRepository;
     private final CurrentUserProvider currentUserProvider;

@@ -71,7 +71,7 @@ export const AdminPage = () => {
       const updatedUser = await adminService.approveUser(targetUser.id);
       replaceUser(updatedUser);
       await loadAdminData();
-      toast({ title: 'User approved', description: `${targetUser.firstName} now has a 15-day trial.` });
+      toast({ title: 'User approved', description: `${targetUser.firstName} now has a 7-day trial.` });
     } catch (error) {
       toast({
         title: "Couldn't approve user",

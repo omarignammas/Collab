@@ -57,7 +57,7 @@ class AuthControllerTest {
                 .firstName("John")
                 .lastName("Doe")
                 .accountStatus(AccountStatus.PENDING)
-                .message("Your account request was sent. An admin must approve it before you can sign in.")
+                .message("You joined the waitlist. An admin will review your request, and once approved you will get a 7-day trial.")
                 .build();
 
         when(authService.register(any(RegisterRequest.class))).thenReturn(response);

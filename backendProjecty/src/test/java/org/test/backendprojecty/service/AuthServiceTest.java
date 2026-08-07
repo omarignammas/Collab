@@ -72,7 +72,7 @@ class AuthServiceTest {
                 .role(Role.USER)
                 .enabled(true)
                 .accountStatus(AccountStatus.APPROVED)
-                .trialExpiresAt(LocalDateTime.now().plusDays(15))
+                .trialExpiresAt(LocalDateTime.now().plusDays(7))
                 .build();
     }
 

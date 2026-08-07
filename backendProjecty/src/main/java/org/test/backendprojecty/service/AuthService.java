@@ -54,7 +54,7 @@ public class AuthService {
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .accountStatus(user.getAccountStatus())
-                .message("Your account request was sent. An admin must approve it before you can sign in.")
+                .message("You joined the waitlist. An admin will review your request, and once approved you will get a 7-day trial.")
                 .build();
     }
 
@@ -101,7 +101,7 @@ public class AuthService {
         }
 
         if (user.getTrialExpiresAt() != null && user.getTrialExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Your 15-day trial has expired. Please contact an admin.");
+            throw new BadRequestException("Your 7-day trial has expired. Please contact an admin.");
         }
     }
 }
