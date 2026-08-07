@@ -562,7 +562,8 @@ export const LandingPage = () => {
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
               On desktop, Collab sits above your work. Ask by voice for the latest Gmail emails, unanswered Teams messages,
-              or the next thing waiting in Slack, Trello, and Discord.
+              or the next thing waiting in Slack, Trello, and Discord. Soon, it will also generate reports, benchmarks,
+              and share-ready briefs for your team.
             </p>
           </Reveal>
           <Reveal delay={100}>
