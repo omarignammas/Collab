@@ -23,6 +23,15 @@ const aiMarkdownComponents = {
   h1: (props) => <p className="mb-1 text-sm font-bold last:mb-0" {...props} />,
   h2: (props) => <p className="mb-1 text-sm font-bold last:mb-0" {...props} />,
   h3: (props) => <p className="mb-1 text-sm font-semibold last:mb-0" {...props} />,
+  table: ({ children }) => (
+    <div className="thin-scrollbar mb-2 max-w-full overflow-x-auto rounded-lg border border-border/60">
+      <table className="w-max min-w-full border-collapse text-xs">{children}</table>
+    </div>
+  ),
+  th: (props) => <th className="border-b border-r border-border/60 bg-accent/50 p-2 text-left text-xs font-semibold text-foreground last:border-r-0" {...props} />,
+  td: (props) => <td className="border-b border-r border-border/60 p-2 align-top text-muted-foreground last:border-r-0" {...props} />,
+  pre: (props) => <pre className="thin-scrollbar mb-2 max-w-full overflow-x-auto rounded-lg bg-muted/60 p-3 text-xs" {...props} />,
+  code: (props) => <code className="rounded bg-muted/70 px-1 py-0.5 text-xs" {...props} />,
   a: ({ href, children, ...props }) => (
     <a
       href={href}
@@ -129,7 +138,7 @@ export const ChatPanel = ({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-2xl border border-border/60 bg-card shadow-ios">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-ios">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 p-4">
         <p className="section-header">
           <MessageSquare className="h-4 w-4 text-primary" />
@@ -138,7 +147,7 @@ export const ChatPanel = ({
         {isHost && <ChatModeSelect value={chatMode} onChange={onChatModeChange} className="h-8 w-auto text-xs" />}
       </div>
 
-      <div ref={listRef} className="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-2 py-3">
+      <div ref={listRef} className="thin-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
         {fullyLocked && (
           <div className="mx-2 mb-2 flex items-start gap-2 rounded-xl border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground">
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -180,11 +189,11 @@ export const ChatPanel = ({
               : null;
 
             return (
-              <div key={m.id} className="group flex gap-2.5 rounded-lg px-2 py-1 mt-3 hover:bg-muted/30">
+              <div key={m.id} className="group flex min-w-0 gap-2.5 rounded-lg px-2 py-1 mt-3 hover:bg-muted/30">
                 <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
                   <Sparkles className="h-4 w-4" />
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 overflow-hidden">
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-semibold text-primary">Collab</span>
                     {elapsedMs != null && elapsedMs >= 0 && (
@@ -194,7 +203,7 @@ export const ChatPanel = ({
                       </span>
                     )}
                   </div>
-                  <div className="animate-in fade-in slide-in-from-bottom-1 mt-0.5 text-foreground">
+                  <div className="animate-in fade-in slide-in-from-bottom-1 mt-0.5 max-w-full overflow-hidden break-words text-foreground">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={aiMarkdownComponents}>
                       {m.body}
                     </ReactMarkdown>

@@ -121,7 +121,7 @@ export const FocusRoomPage = () => {
   }
 
   return (
-    <div className="accent-teal flex h-full w-full min-h-0 flex-col px-4 py-10">
+    <div className="accent-teal flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden px-4 py-10">
       {room.status === 'LOBBY' && (
         <RoomLobby
           room={room}

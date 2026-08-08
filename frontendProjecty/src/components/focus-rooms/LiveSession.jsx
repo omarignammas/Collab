@@ -49,8 +49,8 @@ export const LiveSession = ({
   const inFocusBlock = room.currentPhase === 'WORK';
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]" style={{ minHeight: '480px' }}>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-ios">
+    <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]" style={{ minHeight: '480px' }}>
+      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-ios">
         <div className="shrink-0 border-b border-border/60 p-5">
           <AnimatePresence mode="wait">
             <motion.p
@@ -124,7 +124,7 @@ export const LiveSession = ({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 overflow-hidden">
         <div className="flex shrink-0 gap-1 rounded-full bg-muted/70 p-1">
           <button
             type="button"
@@ -146,7 +146,7 @@ export const LiveSession = ({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           {activeTab === 'chat' ? (
             <ChatPanel
               messages={room.recentMessages}
