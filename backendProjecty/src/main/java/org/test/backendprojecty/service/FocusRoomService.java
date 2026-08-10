@@ -78,6 +78,9 @@ public class FocusRoomService {
             "should", "what", "how", "why", "when", "where", "can", "could",
             "does", "do", "is", "are", "will", "would", "who");
 
+    private static final Set<String> FOCUS_SIGNALS = Set.of(
+            "Deep work", "Writing", "Design", "Research", "Communication", "Other", "Focusing");
+
     @Transactional
     public FocusRoomResponse createRoom(FocusRoomRequest request) {
         User currentUser = currentUserProvider.getCurrentUser();
@@ -483,6 +486,7 @@ public class FocusRoomService {
 
         participant.setStatus(ParticipantStatus.QUIT);
         participant.setLeftAt(LocalDateTime.now());
+        participant.setFocusSignal(null);
         participantRepository.save(participant);
 
         String suffix = room.getStatus() == FocusRoomStatus.ACTIVE ? " (Round " + room.getCurrentRound() + ")" : "";
@@ -649,6 +653,26 @@ public class FocusRoomService {
         focusRoomRepository.save(room);
 
         postSystemMessage(room, "Host set chat to \"" + describeChatMode(mode) + "\"");
+        buildSnapshotAndBroadcast(room);
+    }
+
+    @Transactional
+    public void updateFocusSignal(String code, User currentUser, String signal) {
+        FocusRoom room = findRoomOrThrow(code);
+        FocusRoomParticipant participant = participantRepository
+                .findByRoomIdAndUserId(room.getId(), currentUser.getId())
+                .orElseThrow(() -> new BadRequestException("You are not in this room"));
+
+        if (room.getStatus() != FocusRoomStatus.ACTIVE || participant.getStatus() != ParticipantStatus.FOCUSING) {
+            throw new BadRequestException("Focus signals are only available during an active focus block");
+        }
+
+        String normalized = signal == null ? null : signal.trim();
+        if (normalized != null && !normalized.isEmpty() && !FOCUS_SIGNALS.contains(normalized)) {
+            throw new BadRequestException("Invalid focus signal");
+        }
+        participant.setFocusSignal(normalized == null || normalized.isEmpty() ? null : normalized);
+        participantRepository.save(participant);
         buildSnapshotAndBroadcast(room);
     }
 

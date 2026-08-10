@@ -5,6 +5,34 @@ use tauri::{
   WindowEvent,
 };
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FrontmostApp {
+  name: String,
+  bundle_id: Option<String>,
+}
+
+// This intentionally exposes only the frontmost application's public name and
+// bundle identifier. It cannot inspect window titles, page URLs, documents,
+// keystrokes, or message contents.
+#[tauri::command]
+fn frontmost_app() -> Option<FrontmostApp> {
+  #[cfg(target_os = "macos")]
+  {
+    use objc2_app_kit::NSWorkspace;
+
+    let app = NSWorkspace::sharedWorkspace().frontmostApplication()?;
+    let name = app.localizedName()?.to_string();
+    let bundle_id = app.bundleIdentifier().map(|value| value.to_string());
+    return Some(FrontmostApp { name, bundle_id });
+  }
+
+  #[cfg(not(target_os = "macos"))]
+  {
+    None
+  }
+}
+
 fn position_widget_under_tray<R: Runtime>(widget: &WebviewWindow<R>, icon_rect: &tauri::Rect) {
   let scale = widget.scale_factor().unwrap_or(1.0);
   let icon_pos = icon_rect.position.to_physical::<f64>(scale);
@@ -24,6 +52,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+    .invoke_handler(tauri::generate_handler![frontmost_app])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

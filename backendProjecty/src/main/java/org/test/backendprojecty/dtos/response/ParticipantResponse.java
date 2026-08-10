@@ -20,6 +20,7 @@ public class ParticipantResponse {
     private ParticipantStatus status;
     private boolean handRaised;
     private int minutesFocused;
+    private String focusSignal;
     private boolean isHost;
     private LocalDateTime joinedAt;
     private LocalDateTime leftAt;

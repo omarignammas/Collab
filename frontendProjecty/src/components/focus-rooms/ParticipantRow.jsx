@@ -54,6 +54,11 @@ export const ParticipantRow = ({ participant, roomStatus, isMe }) => {
         {participant.handRaised && <Hand className="h-3.5 w-3.5 shrink-0 text-primary" />}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        {roomStatus === 'ACTIVE' && participant.focusSignal && (
+          <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary sm:inline-flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />{participant.focusSignal}
+          </span>
+        )}
         {participant.status === 'QUIT' && participant.leftAt && (
           <span className="text-xs text-muted-foreground">
             {new Date(participant.leftAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

@@ -4,7 +4,8 @@ import { isTauri } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
 import { useAuth } from '../hooks/useAuth';
-import { useFocusRoomSocket } from '../hooks/useFocusRoomSocket';
+import { useFocusRoomSocketWithSignals } from '../hooks/useFocusRoomSocketWithSignals';
+import { useActivityTracking } from './ActivityTrackingContext';
 
 const FocusSessionContext = createContext(null);
 
@@ -36,9 +37,10 @@ const formatLatestMessage = (message) => {
 // any other page and only clears when the user actually leaves or ends it.
 export const FocusSessionProvider = ({ children }) => {
   const { user } = useAuth();
+  const { enabled: desktopTrackingEnabled, currentApp } = useActivityTracking();
   const navigate = useNavigate();
   const [activeRoomCode, setActiveRoomCode] = useState(null);
-  const socket = useFocusRoomSocket(activeRoomCode);
+  const socket = useFocusRoomSocketWithSignals(activeRoomCode);
   const { room } = socket;
 
   const roomRef = useRef(room);
@@ -47,6 +49,8 @@ export const FocusSessionProvider = ({ children }) => {
   }, [room]);
 
   const [remaining, setRemaining] = useState(0);
+  const [shareFocusSignal, setShareFocusSignal] = useState(false);
+  const lastFocusSignalRef = useRef(undefined);
 
   const totalMs = useMemo(() => {
     if (!room) return 0;
@@ -101,6 +105,18 @@ export const FocusSessionProvider = ({ children }) => {
     }
     wasActiveRef.current = isActiveNow;
   }, [room?.status]);
+
+  useEffect(() => {
+    const canShare = Boolean(room?.status === 'ACTIVE' && room?.currentPhase === 'WORK' && shareFocusSignal && desktopTrackingEnabled);
+    const nextSignal = canShare ? (currentApp?.category || 'Focusing') : null;
+    if (lastFocusSignalRef.current === nextSignal) return;
+    lastFocusSignalRef.current = nextSignal;
+    if (activeRoomCode) socket.sendFocusSignal(nextSignal);
+  }, [activeRoomCode, currentApp?.category, desktopTrackingEnabled, room?.currentPhase, room?.status, shareFocusSignal, socket.sendFocusSignal]);
+
+  useEffect(() => {
+    if (!desktopTrackingEnabled) setShareFocusSignal(false);
+  }, [desktopTrackingEnabled]);
 
   const joinSession = useCallback((code) => {
     setActiveRoomCode((prev) => (prev === code ? prev : code));
@@ -179,6 +195,9 @@ export const FocusSessionProvider = ({ children }) => {
     sendHand: socket.sendHand,
     sendChat: socket.sendChat,
     sendChatMode: socket.sendChatMode,
+    shareFocusSignal,
+    setShareFocusSignal,
+    desktopTrackingEnabled,
     leaveRoom,
     endRoomSession,
     joinSession,

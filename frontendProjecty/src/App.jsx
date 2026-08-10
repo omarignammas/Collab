@@ -7,6 +7,7 @@ import { onAction } from '@tauri-apps/plugin-notification';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { AuthProvider } from './context/AuthContext';
 import { FocusSessionProvider } from './context/FocusSessionContext';
+import { ActivityTrackingProvider } from './context/ActivityTrackingContext';
 import ProtectedRoute from './components/routes/ProtectedRoute';
 import AdminRoute from './components/routes/AdminRoute';
 import LandingPage from './pages/LandingPage';
@@ -53,6 +54,7 @@ const SummaryDetailPage = lazy(() => import('./pages/SummaryDetailPage'));
 const QuizTakePage = lazy(() => import('./pages/QuizTakePage'));
 const WidgetPage = lazy(() => import('./pages/WidgetPage'));
 const CirclesPage = lazy(() => import('./pages/CirclesPage'));
+const InsightsPage = lazy(() => import('./pages/InsightsPage'));
 
 const GLOBAL_ASSISTANT_SHORTCUTS = ['Control+Alt+C', 'Control+Alt+Space'];
 
@@ -132,6 +134,7 @@ function App() {
     <Toaster/>
     <Router>
       <AuthProvider>
+        <ActivityTrackingProvider>
         <FocusSessionProvider>
         <NotificationClickHandler />
         <GlobalAssistantShortcut />
@@ -163,6 +166,7 @@ function App() {
               <Route path="/friends" element={<FriendsPage />} />
               <Route path="/circles" element={<CirclesPage />} />
               <Route path="/stats" element={<StatsPage />} />
+              <Route path="/insights" element={<InsightsPage />} />
               <Route path="/overdue" element={<OverduePage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
@@ -174,6 +178,7 @@ function App() {
           </Routes>
         </Suspense>
         </FocusSessionProvider>
+        </ActivityTrackingProvider>
       </AuthProvider>
     </Router>
     </ThemeProvider>

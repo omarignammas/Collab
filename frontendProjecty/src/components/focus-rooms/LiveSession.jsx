@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DoorOpen, Square } from 'lucide-react';
+import { DoorOpen, EyeOff, MonitorCog, Square } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
   AlertDialog,
@@ -17,6 +17,7 @@ import ParticipantRow from './ParticipantRow';
 import ChatPanel from './ChatPanel';
 import SessionNotes from './SessionNotes';
 import { CircularProgress } from '../shared/CircularProgress';
+import { Checkbox } from '../ui/checkbox';
 
 const PHASE_LABEL = {
   WORK: 'Focus',
@@ -42,6 +43,9 @@ export const LiveSession = ({
   sendHand,
   sendChat,
   sendChatMode,
+  shareFocusSignal,
+  onShareFocusSignalChange,
+  desktopTrackingEnabled,
 }) => {
   const [activeTab, setActiveTab] = useState('chat');
 
@@ -113,6 +117,19 @@ export const LiveSession = ({
             </AlertDialog>
           )}
         </div>
+
+        {inFocusBlock && (
+          <div className="shrink-0 border-t border-border/60 px-5 py-3">
+            {desktopTrackingEnabled ? (
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
+                <Checkbox checked={shareFocusSignal} onCheckedChange={(value) => onShareFocusSignalChange(Boolean(value))} />
+                <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 text-xs font-medium text-foreground"><MonitorCog className="h-3.5 w-3.5 text-primary" />Share focus signal</span><span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">Shares only a broad status like Deep work, never your app name or content.</span></span>
+              </label>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground"><EyeOff className="h-3.5 w-3.5 shrink-0" />Enable Desktop activity in Settings to share an optional focus signal.</div>
+            )}
+          </div>
+        )}
 
         <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-border/60 p-5">
           <p className="section-header mb-2">participants ({room.participants.length})</p>

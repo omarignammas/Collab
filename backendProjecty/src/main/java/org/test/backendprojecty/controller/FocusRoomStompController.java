@@ -10,6 +10,7 @@ import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.test.backendprojecty.dtos.request.ChatMessageRequest;
 import org.test.backendprojecty.dtos.request.ChatModeRequest;
+import org.test.backendprojecty.dtos.request.FocusSignalRequest;
 import org.test.backendprojecty.entity.User;
 import org.test.backendprojecty.exception.UnauthorizedException;
 import org.test.backendprojecty.repository.UserRepository;
@@ -52,6 +53,11 @@ public class FocusRoomStompController {
     @MessageMapping("/rooms/{code}/chat-mode")
     public void chatMode(@DestinationVariable String code, Principal principal, @Valid @Payload ChatModeRequest request) {
         focusRoomService.updateChatMode(code, resolveUser(principal), request.getMode());
+    }
+
+    @MessageMapping("/rooms/{code}/focus-signal")
+    public void focusSignal(@DestinationVariable String code, Principal principal, @Valid @Payload FocusSignalRequest request) {
+        focusRoomService.updateFocusSignal(code, resolveUser(principal), request.getSignal());
     }
 
     @MessageExceptionHandler(RuntimeException.class)

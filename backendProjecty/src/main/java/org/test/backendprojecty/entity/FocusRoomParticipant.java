@@ -45,6 +45,11 @@ public class FocusRoomParticipant {
     @Builder.Default
     private int minutesFocused = 0;
 
+    // A deliberately broad, opt-in room signal such as "Deep work". We never
+    // persist the app name, window title, document, website, or message content.
+    @Column(length = 48)
+    private String focusSignal;
+
     private LocalDateTime joinedAt;
 
     private LocalDateTime leftAt;

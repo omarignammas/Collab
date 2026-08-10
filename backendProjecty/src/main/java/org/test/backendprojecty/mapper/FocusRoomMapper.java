@@ -56,6 +56,7 @@ public class FocusRoomMapper {
                 .status(participant.getStatus())
                 .handRaised(participant.isHandRaised())
                 .minutesFocused(participant.getMinutesFocused())
+                .focusSignal(participant.getFocusSignal())
                 .isHost(room.getHost().getId().equals(participant.getUser().getId()))
                 .joinedAt(participant.getJoinedAt())
                 .leftAt(participant.getLeftAt())

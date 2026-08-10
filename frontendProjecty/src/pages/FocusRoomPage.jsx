@@ -32,6 +32,9 @@ export const FocusRoomPage = () => {
     remaining,
     ringPercentage,
     isHost,
+    shareFocusSignal,
+    setShareFocusSignal,
+    desktopTrackingEnabled,
   } = useFocusSession();
 
   const [loadError, setLoadError] = useState('');
@@ -144,6 +147,9 @@ export const FocusRoomPage = () => {
           sendHand={sendHand}
           sendChat={sendChat}
           sendChatMode={sendChatMode}
+          shareFocusSignal={shareFocusSignal}
+          onShareFocusSignalChange={setShareFocusSignal}
+          desktopTrackingEnabled={desktopTrackingEnabled}
         />
       )}
       {room.status === 'COMPLETED' && <SessionRecap room={room} userEmail={user.email} />}
