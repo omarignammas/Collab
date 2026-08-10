@@ -18,5 +18,9 @@ public interface CircleMemberRepository extends JpaRepository<CircleMember, Long
 
     List<CircleMember> findByCircleIdAndStatusOrderByCreatedAtAsc(Long circleId, CircleMemberStatus status);
 
+    List<CircleMember> findByCircleIdOrderByCreatedAtAsc(Long circleId);
+
     Optional<CircleMember> findByCircleIdAndUserId(Long circleId, Long userId);
+
+    void deleteByCircleId(Long circleId);
 }

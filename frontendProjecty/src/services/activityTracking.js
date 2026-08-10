@@ -13,7 +13,12 @@ const APP_RULES = [
   { category: 'Research', names: ['Google Chrome', 'Safari', 'Firefox', 'Arc', 'Brave Browser'], bundles: ['com.google.Chrome', 'com.apple.Safari', 'org.mozilla.firefox', 'company.thebrowser.Browser', 'com.brave.Browser'] },
 ];
 
-const formatDay = (date = new Date()) => date.toISOString().slice(0, 10);
+const formatDay = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export const isDesktopTrackingAvailable = () => isTauri();
 
@@ -88,11 +93,19 @@ export const clearActivityEntries = () => {
 
 export const buildActivitySummary = (entries = readActivityEntries(), now = new Date()) => {
   const today = formatDay(now);
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - 6);
-  const cutoffDay = formatDay(weekStart);
+  const dayAtOffset = (offset) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() + offset);
+    return formatDay(date);
+  };
+  const cutoffDay = dayAtOffset(-6);
+  const previousWeekStart = dayAtOffset(-13);
+  const previousWeekEnd = dayAtOffset(-7);
   const todayEntries = entries.filter((entry) => entry.day === today);
-  const weekEntries = entries.filter((entry) => entry.day >= cutoffDay);
+  const weekEntries = entries.filter((entry) => entry.day >= cutoffDay && entry.day <= today);
+  const previousWeekEntries = entries.filter(
+    (entry) => entry.day >= previousWeekStart && entry.day <= previousWeekEnd
+  );
   const totalSeconds = todayEntries.reduce((sum, entry) => sum + entry.seconds, 0);
   const deepWorkSeconds = todayEntries
     .filter((entry) => ['Deep work', 'Writing', 'Design'].includes(entry.category))
@@ -100,30 +113,65 @@ export const buildActivitySummary = (entries = readActivityEntries(), now = new 
   const appMap = new Map();
   const categoryMap = new Map();
   for (const entry of weekEntries) {
-    const app = appMap.get(entry.key) || { ...entry, seconds: 0 };
+    const appKey = entry.bundleId || entry.name;
+    const app = appMap.get(appKey) || { ...entry, key: appKey, seconds: 0 };
     app.seconds += entry.seconds;
-    appMap.set(entry.key, app);
+    appMap.set(appKey, app);
     categoryMap.set(entry.category, (categoryMap.get(entry.category) || 0) + entry.seconds);
   }
-  const topApps = [...appMap.values()].sort((a, b) => b.seconds - a.seconds).slice(0, 5);
+  const weeklySeconds = weekEntries.reduce((sum, entry) => sum + entry.seconds, 0);
+  const previousWeekSeconds = previousWeekEntries.reduce((sum, entry) => sum + entry.seconds, 0);
+  const weeklyChangePercent = previousWeekSeconds
+    ? Math.round(((weeklySeconds - previousWeekSeconds) / previousWeekSeconds) * 100)
+    : null;
+  const topApps = [...appMap.values()]
+    .sort((a, b) => b.seconds - a.seconds)
+    .slice(0, 5)
+    .map((app) => ({
+      ...app,
+      percentage: weeklySeconds ? Math.round((app.seconds / weeklySeconds) * 100) : 0,
+    }));
   const categories = [...categoryMap.entries()]
-    .map(([name, seconds]) => ({ name, seconds }))
+    .map(([name, seconds]) => ({
+      name,
+      seconds,
+      percentage: weeklySeconds ? Math.round((seconds / weeklySeconds) * 100) : 0,
+    }))
     .sort((a, b) => b.seconds - a.seconds);
-  const days = Array.from({ length: 14 }, (_, index) => {
+  const heatmapDays = Array.from({ length: 56 }, (_, index) => {
     const date = new Date(now);
-    date.setDate(now.getDate() - (13 - index));
+    date.setDate(now.getDate() - (55 - index));
     const day = formatDay(date);
     const seconds = entries.filter((entry) => entry.day === day).reduce((sum, entry) => sum + entry.seconds, 0);
     return { day, seconds };
   });
+  const days = heatmapDays.slice(-14);
+  const weekDays = heatmapDays.slice(-7);
+  const activeWeekDays = weekDays.filter((day) => day.seconds > 0);
+  const strongestDay = weekDays.reduce(
+    (strongest, day) => (day.seconds > strongest.seconds ? day : strongest),
+    { day: today, seconds: 0 }
+  );
+  const intentionalWeekSeconds = weekEntries
+    .filter((entry) => ['Deep work', 'Writing', 'Design'].includes(entry.category))
+    .reduce((sum, entry) => sum + entry.seconds, 0);
 
   return {
     todaySeconds: totalSeconds,
     deepWorkSeconds,
     focusRate: totalSeconds ? Math.round((deepWorkSeconds / totalSeconds) * 100) : 0,
+    intentionalWeekRate: weeklySeconds ? Math.round((intentionalWeekSeconds / weeklySeconds) * 100) : 0,
+    weeklySeconds,
+    previousWeekSeconds,
+    weeklyChangePercent,
+    activeDays: activeWeekDays.length,
+    consistencyRate: Math.round((activeWeekDays.length / 7) * 100),
+    averageActiveDaySeconds: activeWeekDays.length ? Math.round(weeklySeconds / activeWeekDays.length) : 0,
+    strongestDay,
     topApps,
     categories,
     days,
+    heatmapDays,
   };
 };
 

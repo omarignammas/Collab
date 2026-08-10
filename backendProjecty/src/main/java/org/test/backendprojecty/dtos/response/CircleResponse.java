@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.test.backendprojecty.entity.CircleMemberStatus;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -20,7 +21,11 @@ public class CircleResponse {
     private CircleMemberStatus membershipStatus;
     private int collectiveMomentum;
     private int activeMemberCount;
+    private int pendingMemberCount;
     private int completedTasksThisWeek;
     private int focusMinutesThisWeek;
+    private int activeDaysThisWeek;
+    private int quizAttemptsThisWeek;
     private List<CircleMemberResponse> members;
+    private LocalDateTime createdAt;
 }

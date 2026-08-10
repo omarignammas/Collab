@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.test.backendprojecty.dtos.request.CreateCircleRequest;
+import org.test.backendprojecty.dtos.request.InviteCircleMembersRequest;
+import org.test.backendprojecty.dtos.request.UpdateCircleRequest;
 import org.test.backendprojecty.dtos.response.CircleResponse;
 import org.test.backendprojecty.service.CircleService;
 
@@ -26,6 +28,34 @@ public class CircleController {
     @GetMapping
     public ResponseEntity<List<CircleResponse>> listMine() {
         return ResponseEntity.ok(circleService.listMine());
+    }
+
+    @PutMapping("/{circleId}")
+    public ResponseEntity<CircleResponse> update(
+            @PathVariable Long circleId,
+            @Valid @RequestBody UpdateCircleRequest request) {
+        return ResponseEntity.ok(circleService.update(circleId, request));
+    }
+
+    @PostMapping("/{circleId}/members")
+    public ResponseEntity<CircleResponse> inviteMembers(
+            @PathVariable Long circleId,
+            @Valid @RequestBody InviteCircleMembersRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(circleService.inviteMembers(circleId, request.getUserIds()));
+    }
+
+    @DeleteMapping("/{circleId}/members/{userId}")
+    public ResponseEntity<CircleResponse> removeMember(
+            @PathVariable Long circleId,
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(circleService.removeMember(circleId, userId));
+    }
+
+    @DeleteMapping("/{circleId}")
+    public ResponseEntity<Void> delete(@PathVariable Long circleId) {
+        circleService.delete(circleId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{circleId}/accept")

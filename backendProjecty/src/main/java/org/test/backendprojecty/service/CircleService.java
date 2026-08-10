@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.test.backendprojecty.dtos.request.CreateCircleRequest;
+import org.test.backendprojecty.dtos.request.UpdateCircleRequest;
 import org.test.backendprojecty.dtos.response.CircleMemberResponse;
 import org.test.backendprojecty.dtos.response.CircleResponse;
 import org.test.backendprojecty.dtos.response.MomentumResponse;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -74,6 +76,83 @@ public class CircleService {
     }
 
     @Transactional
+    public CircleResponse update(Long circleId, UpdateCircleRequest request) {
+        Circle circle = requireOwnedCircle(circleId);
+        circle.setName(request.getName().trim());
+        circleRepository.save(circle);
+        return toResponse(circle, CircleMemberStatus.ACTIVE);
+    }
+
+    @Transactional
+    public CircleResponse inviteMembers(Long circleId, List<Long> requestedUserIds) {
+        Circle circle = requireOwnedCircle(circleId);
+        User owner = currentUserProvider.getCurrentUser();
+        Set<Long> inviteeIds = new LinkedHashSet<>(requestedUserIds == null ? List.of() : requestedUserIds);
+        inviteeIds.remove(owner.getId());
+
+        List<CircleMember> memberships = circleMemberRepository.findByCircleIdOrderByCreatedAtAsc(circleId);
+        Set<Long> involvedUserIds = memberships.stream()
+                .filter(member -> member.getStatus() != CircleMemberStatus.DECLINED)
+                .map(member -> member.getUser().getId())
+                .collect(java.util.stream.Collectors.toSet());
+        long newInviteCount = inviteeIds.stream().filter(userId -> !involvedUserIds.contains(userId)).count();
+        if (involvedUserIds.size() + newInviteCount > 8) {
+            throw new BadRequestException("A Circle can have up to 8 people including you");
+        }
+
+        for (Long userId : inviteeIds) {
+            if (!friendService.areFriends(owner.getId(), userId)) {
+                throw new BadRequestException("You can only invite accepted friends to a Circle");
+            }
+            CircleMember existing = memberships.stream()
+                    .filter(member -> member.getUser().getId().equals(userId))
+                    .findFirst()
+                    .orElse(null);
+            if (existing != null && existing.getStatus() != CircleMemberStatus.DECLINED) {
+                continue;
+            }
+
+            User friend = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Friend not found"));
+            CircleMember membership;
+            if (existing != null) {
+                existing.setStatus(CircleMemberStatus.INVITED);
+                existing.setRespondedAt(null);
+                membership = circleMemberRepository.save(existing);
+            } else {
+                membership = circleMemberRepository.save(CircleMember.builder()
+                        .circle(circle)
+                        .user(friend)
+                        .status(CircleMemberStatus.INVITED)
+                        .build());
+                memberships.add(membership);
+            }
+            notificationService.notify(friend, NotificationType.CIRCLE_INVITE,
+                    "Circle invitation", displayName(owner) + " invited you to join " + circle.getName(), "/circles");
+        }
+        return toResponse(circle, CircleMemberStatus.ACTIVE);
+    }
+
+    @Transactional
+    public CircleResponse removeMember(Long circleId, Long userId) {
+        Circle circle = requireOwnedCircle(circleId);
+        if (circle.getOwner().getId().equals(userId)) {
+            throw new BadRequestException("The Circle owner cannot be removed");
+        }
+        CircleMember membership = circleMemberRepository.findByCircleIdAndUserId(circleId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Circle member not found"));
+        circleMemberRepository.delete(membership);
+        return toResponse(circle, CircleMemberStatus.ACTIVE);
+    }
+
+    @Transactional
+    public void delete(Long circleId) {
+        Circle circle = requireOwnedCircle(circleId);
+        circleMemberRepository.deleteByCircleId(circleId);
+        circleRepository.delete(circle);
+    }
+
+    @Transactional
     public CircleResponse accept(Long circleId) {
         CircleMember membership = requireInvitation(circleId);
         membership.setStatus(CircleMemberStatus.ACTIVE);
@@ -100,6 +179,16 @@ public class CircleService {
         return membership;
     }
 
+    private Circle requireOwnedCircle(Long circleId) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        Circle circle = circleRepository.findById(circleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Circle not found"));
+        if (!circle.getOwner().getId().equals(currentUser.getId())) {
+            throw new BadRequestException("Only the Circle owner can manage it");
+        }
+        return circle;
+    }
+
     private CircleResponse toResponse(Circle circle, CircleMemberStatus membershipStatus) {
         List<CircleMember> activeMembers = circleMemberRepository
                 .findByCircleIdAndStatusOrderByCreatedAtAsc(circle.getId(), CircleMemberStatus.ACTIVE);
@@ -110,10 +199,16 @@ public class CircleService {
             visibleMembers.addAll(pendingMembers);
         }
 
-        List<MomentumResponse> momentums = activeMembers.stream().map(member -> momentumService.getMomentumFor(member.getUser())).toList();
+        Map<Long, MomentumResponse> momentumByUserId = activeMembers.stream().collect(java.util.stream.Collectors.toMap(
+                member -> member.getUser().getId(),
+                member -> momentumService.getMomentumFor(member.getUser())
+        ));
+        List<MomentumResponse> momentums = new ArrayList<>(momentumByUserId.values());
         int collectiveMomentum = momentums.isEmpty() ? 0 : (int) Math.round(momentums.stream().mapToInt(MomentumResponse::getScore).average().orElse(0));
         int completedTasks = momentums.stream().mapToInt(MomentumResponse::getCompletedTasks).sum();
         int focusMinutes = momentums.stream().mapToInt(MomentumResponse::getFocusMinutes).sum();
+        int activeDays = momentums.stream().mapToInt(MomentumResponse::getActiveDays).sum();
+        int quizAttempts = momentums.stream().mapToInt(MomentumResponse::getQuizAttempts).sum();
 
         return CircleResponse.builder()
                 .id(circle.getId())
@@ -123,16 +218,20 @@ public class CircleService {
                 .membershipStatus(membershipStatus)
                 .collectiveMomentum(collectiveMomentum)
                 .activeMemberCount(activeMembers.size())
+                .pendingMemberCount(pendingMembers.size())
                 .completedTasksThisWeek(completedTasks)
                 .focusMinutesThisWeek(focusMinutes)
+                .activeDaysThisWeek(activeDays)
+                .quizAttemptsThisWeek(quizAttempts)
                 .members(visibleMembers.stream().map(member -> CircleMemberResponse.builder()
                         .userId(member.getUser().getId())
                         .displayName(displayName(member.getUser()))
                         .avatarUrl(member.getUser().getAvatarUrl())
                         .status(member.getStatus())
                         .owner(circle.getOwner().getId().equals(member.getUser().getId()))
-                        .momentum(member.getStatus() == CircleMemberStatus.ACTIVE ? momentumService.getMomentumFor(member.getUser()) : null)
+                        .momentum(member.getStatus() == CircleMemberStatus.ACTIVE ? momentumByUserId.get(member.getUser().getId()) : null)
                         .build()).toList())
+                .createdAt(circle.getCreatedAt())
                 .build();
     }
 
