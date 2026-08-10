@@ -13,6 +13,15 @@ export const courseSummaryService = {
     return response.data;
   },
 
+  async createResearchReport({ topic, title, courseId }) {
+    const response = await api.post('/course-summaries/research', {
+      topic,
+      title: title || null,
+      courseId: courseId || null,
+    });
+    return response.data;
+  },
+
   async getAllSummaries({
     page = 1,
     size = 20,

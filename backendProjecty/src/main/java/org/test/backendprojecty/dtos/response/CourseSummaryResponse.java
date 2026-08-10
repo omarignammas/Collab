@@ -23,6 +23,7 @@ public class CourseSummaryResponse {
     private SourceFileType sourceFileType;
     private String summaryMarkdown;
     private String diagramJson;
+    private boolean researchReport;
     private GenerationStatus status;
     @JsonProperty("isOwner")
     private boolean isOwner;

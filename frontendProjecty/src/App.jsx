@@ -62,6 +62,7 @@ const CirclesPage = lazy(() => import('./pages/CirclesPage'));
 const InsightsPage = lazy(() => import('./pages/InsightsPage'));
 
 const GLOBAL_ASSISTANT_SHORTCUTS = ['Control+Alt+C', 'Control+Alt+Space'];
+const GLOBAL_QUICK_NOTE_SHORTCUT = 'Control+Alt+N';
 
 const GlobalAssistantShortcut = () => {
   useEffect(() => {
@@ -86,6 +87,18 @@ const GlobalAssistantShortcut = () => {
           const firstError = results.find((result) => result.status === 'rejected')?.reason;
           throw firstError || new Error('No assistant shortcut could be registered');
         }
+
+        try {
+          await register(GLOBAL_QUICK_NOTE_SHORTCUT, async (event) => {
+            if (!mounted || event.state !== 'Pressed') return;
+            const widget = await Window.getByLabel('widget');
+            await widget?.show();
+            await widget?.setFocus();
+            await emit('quick-note-hotkey');
+          });
+        } catch (error) {
+          console.warn('Global quick-note shortcut could not be registered:', error);
+        }
       } catch (error) {
         console.warn('Global assistant shortcut could not be registered:', error);
       }
@@ -95,6 +108,7 @@ const GlobalAssistantShortcut = () => {
     return () => {
       mounted = false;
       GLOBAL_ASSISTANT_SHORTCUTS.forEach((shortcut) => unregister(shortcut).catch(() => {}));
+      unregister(GLOBAL_QUICK_NOTE_SHORTCUT).catch(() => {});
     };
   }, []);
 

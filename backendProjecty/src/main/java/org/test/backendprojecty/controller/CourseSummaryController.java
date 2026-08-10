@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.test.backendprojecty.dtos.request.InviteMemberRequest;
 import org.test.backendprojecty.dtos.request.PaginationRequest;
+import org.test.backendprojecty.dtos.request.ResearchReportRequest;
 import org.test.backendprojecty.dtos.response.CourseSummaryResponse;
 import org.test.backendprojecty.dtos.response.PagingResult;
 import org.test.backendprojecty.dtos.response.SharedUserResponse;
@@ -31,6 +32,14 @@ public class CourseSummaryController {
     ) {
         CourseSummaryResponse response = courseSummaryService.uploadSummary(file, courseId, title);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/research")
+    public ResponseEntity<CourseSummaryResponse> createResearchReport(
+            @Valid @RequestBody ResearchReportRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(courseSummaryService.createResearchReport(request));
     }
 
     @GetMapping

@@ -14,6 +14,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.multipart.MultipartFile;
 import org.test.backendprojecty.dtos.request.PaginationRequest;
+import org.test.backendprojecty.dtos.request.ResearchReportRequest;
 import org.test.backendprojecty.dtos.response.CourseSummaryResponse;
 import org.test.backendprojecty.dtos.response.PagingResult;
 import org.test.backendprojecty.dtos.response.SharedUserResponse;
@@ -104,6 +105,36 @@ public class CourseSummaryService {
         return courseSummaryMapper.toResponse(summary, currentUser.getId());
     }
 
+    @Transactional
+    public CourseSummaryResponse createResearchReport(ResearchReportRequest request) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        Course course = null;
+        if (request.getCourseId() != null) {
+            course = courseRepository.findByIdAndUserIdAndDeletedFalse(request.getCourseId(), currentUser.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + request.getCourseId()));
+        }
+
+        String topic = request.getTopic().trim();
+        String title = request.getTitle() != null && !request.getTitle().isBlank()
+                ? request.getTitle().trim()
+                : "Research: " + topic;
+        if (title.length() > 255) title = title.substring(0, 255);
+
+        CourseSummary summary = courseSummaryRepository.save(CourseSummary.builder()
+                .user(currentUser)
+                .course(course)
+                .title(title)
+                .sourceFileUrl("research://generated")
+                .sourceFileType(SourceFileType.PDF)
+                .extractedText(topic)
+                .researchReport(true)
+                .status(GenerationStatus.PENDING)
+                .build());
+
+        eventPublisher.publishEvent(new CourseSummaryUploadedEvent(summary.getId()));
+        return courseSummaryMapper.toResponse(summary, currentUser.getId());
+    }
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("aiExecutor")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -115,7 +146,9 @@ public class CourseSummaryService {
 
         try {
             String raw;
-            if (summary.getSourceFileType() == SourceFileType.PDF) {
+            if (Boolean.TRUE.equals(summary.getResearchReport())) {
+                raw = llmApiClient.generateText(buildResearchPrompt(summary.getExtractedText()), 3000);
+            } else if (summary.getSourceFileType() == SourceFileType.PDF) {
                 raw = llmApiClient.generateText(buildTextPrompt(summary.getExtractedText()));
             } else {
                 byte[] imageBytes = readStoredFile(summary.getSourceFileUrl());
@@ -144,9 +177,10 @@ public class CourseSummaryService {
             summary.setStatus(GenerationStatus.READY);
             courseSummaryRepository.save(summary);
 
+            boolean research = Boolean.TRUE.equals(summary.getResearchReport());
             notificationService.notify(summary.getUser(), NotificationType.SUMMARY_READY,
-                    "Summary ready",
-                    "Your AI summary for \"" + summary.getTitle() + "\" is ready",
+                    research ? "Research report ready" : "Summary ready",
+                    (research ? "Your research report" : "Your AI summary") + " for \"" + summary.getTitle() + "\" is ready",
                     "/summaries/" + summary.getId());
         } catch (Exception e) {
             log.warn("Failed to generate summary {}: {}", summary.getId(), e.getMessage());
@@ -336,6 +370,27 @@ public class CourseSummaryService {
                 headings and bullet lists). %s If the image doesn't contain meaningful course \
                 material, say so briefly and skip the diagram.
                 """.formatted(DIAGRAM_INSTRUCTION);
+    }
+
+    private String buildResearchPrompt(String topic) {
+        return """
+                Create a decision-ready research report about the topic below. This is a model-assisted research brief,
+                not live web browsing, so explicitly state the knowledge limitations and never claim that you visited
+                or verified a current webpage. Do not invent statistics, quotations, companies, citations, or URLs.
+                When a fact may have changed recently, label it as needing verification.
+
+                Use polished Markdown with:
+                - Executive summary
+                - Scope and evaluation criteria
+                - A comparison or benchmarking table when applicable
+                - Key findings and trade-offs
+                - Risks, unknowns, and verification checklist
+                - Practical recommendations and next actions
+                - Sources to verify (only well-known, real primary-source homepages or documents you are confident exist)
+
+                Topic:
+                %s
+                """.formatted(topic);
     }
 
     // Cheap structural check, not full validation — just enough to avoid storing

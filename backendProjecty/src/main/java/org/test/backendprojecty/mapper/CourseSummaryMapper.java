@@ -17,6 +17,7 @@ public class CourseSummaryMapper {
                 .sourceFileType(summary.getSourceFileType())
                 .summaryMarkdown(summary.getSummaryMarkdown())
                 .diagramJson(summary.getDiagramJson())
+                .researchReport(Boolean.TRUE.equals(summary.getResearchReport()))
                 .status(summary.getStatus())
                 .isOwner(summary.getUser().getId().equals(viewerId))
                 .ownerName(summary.getUser().getFirstName() + " " + summary.getUser().getLastName())

@@ -105,6 +105,10 @@ public class WorkspaceAssistantService {
         for (Note note : notes) {
             sources.add(source(sequence++, "NOTE", note.getTitle(), "/notes",
                     join(note.getTitle(), note.getBody(),
+                            note.getTheme() != null ? "Theme: " + note.getTheme() : null,
+                            note.getTags() != null && !note.getTags().isEmpty() ? "Topics: " + String.join(", ", note.getTags()) : null,
+                            note.getTimeReferences() != null && !note.getTimeReferences().isEmpty() ? "Time references: " + String.join(", ", note.getTimeReferences()) : null,
+                            note.getExtractedLinks() != null && !note.getExtractedLinks().isEmpty() ? "Links: " + String.join(", ", note.getExtractedLinks()) : null,
                             note.getCourse() != null ? "Project: " + note.getCourse().getTitle() : null,
                             "Updated: " + note.getUpdatedAt())));
         }

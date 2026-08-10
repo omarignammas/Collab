@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Mic, Square } from 'lucide-react';
+import { Loader2, Mic, Sparkles, Square } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -62,9 +62,11 @@ export const CreateNoteDialog = ({ open, onOpenChange, onNoteCreated }) => {
     setLoading(true);
 
     try {
+      const cleanBody = formData.body.trim();
+      const generatedTitle = cleanBody.split(/\s+/).slice(0, 7).join(' ').replace(/[.,!?;:]+$/, '');
       const newNote = await noteService.createNote({
-        title: formData.title.trim(),
-        body: formData.body,
+        title: formData.title.trim() || generatedTitle || 'Quick note',
+        body: cleanBody,
         tags: [],
         savedUrl: null,
         courseId: courseId !== 'none' ? Number(courseId) : null,
@@ -90,7 +92,7 @@ export const CreateNoteDialog = ({ open, onOpenChange, onNoteCreated }) => {
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>New note</DialogTitle>
-          <DialogDescription>Write it or say it. Collab keeps the transcription with your note.</DialogDescription>
+          <DialogDescription>Write or dictate naturally. Collab will format it and extract themes, topics, links, and time references.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
@@ -102,14 +104,13 @@ export const CreateNoteDialog = ({ open, onOpenChange, onNoteCreated }) => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Title <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Input
                 id="title"
                 name="title"
                 placeholder="What is this about?"
                 value={formData.title}
                 onChange={handleChange}
-                required
               />
             </div>
 
@@ -139,6 +140,11 @@ export const CreateNoteDialog = ({ open, onOpenChange, onNoteCreated }) => {
               {voiceState === 'recording' && <p className="text-xs font-medium text-destructive">Listening. Speak naturally, then press Finish recording.</p>}
             </div>
 
+            <div className="flex items-start gap-2 rounded-lg bg-primary/8 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              The note saves immediately. AI organization finishes quietly in the background.
+            </div>
+
             <div className="space-y-2">
               <Label>Project</Label>
               <Select value={courseId} onValueChange={setCourseId}>
@@ -160,7 +166,7 @@ export const CreateNoteDialog = ({ open, onOpenChange, onNoteCreated }) => {
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || voiceState !== 'idle'}>
+            <Button type="submit" disabled={loading || voiceState !== 'idle' || !formData.body.trim()}>
               {loading ? 'Saving...' : 'Save note'}
             </Button>
           </DialogFooter>

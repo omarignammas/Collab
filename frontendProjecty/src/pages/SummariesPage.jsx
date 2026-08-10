@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Plus, FileText, HelpCircle, Users, Loader2 } from 'lucide-react';
+import { Sparkles, Plus, FileText, HelpCircle, Users, Loader2, Search } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import PageHero from '../components/shared/PageHero';
 import UploadSummaryDialog from '../components/summaries/UploadSummaryDialog';
+import ResearchReportDialog from '../components/summaries/ResearchReportDialog';
 import courseSummaryService from '../services/courseSummaryService';
 import quizService from '../services/quizService';
 
@@ -33,6 +34,7 @@ export const SummariesPage = () => {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isResearchOpen, setIsResearchOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -63,12 +65,7 @@ export const SummariesPage = () => {
         icon={Sparkles}
         title="Summaries"
         subtitle="Turn project material into clear summaries and useful follow-up work."
-        action={
-          <Button onClick={() => setIsUploadOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Upload File
-          </Button>
-        }
+        action={<div className="flex w-full flex-col gap-2 min-[420px]:flex-row sm:w-auto"><Button variant="outline" onClick={() => setIsUploadOpen(true)}><Plus className="h-4 w-4" />Upload file</Button><Button onClick={() => setIsResearchOpen(true)}><Search className="h-4 w-4" />Research</Button></div>}
       />
 
       <div className="mb-6 inline-flex gap-1 rounded-lg border border-border/80 bg-card p-1">
@@ -100,7 +97,7 @@ export const SummariesPage = () => {
         </div>
       ) : activeTab === 'summaries' ? (
         summaries.length === 0 ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">No summaries yet — upload a file to get started.</p>
+          <p className="py-12 text-center text-sm text-muted-foreground">No summaries yet. Upload material or ask Collab to research a topic.</p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {summaries.map((summary) => (
@@ -112,7 +109,7 @@ export const SummariesPage = () => {
                 <CardContent className="p-5">
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <FileText className="h-4 w-4" />
+                      {summary.researchReport ? <Search className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                     </span>
                     <div className="flex flex-wrap justify-end gap-1.5">
                       {!summary.isOwner && (
@@ -121,6 +118,7 @@ export const SummariesPage = () => {
                           shared
                         </Badge>
                       )}
+                      {summary.researchReport && <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">research</Badge>}
                       <StatusBadge status={summary.status} />
                     </div>
                   </div>
@@ -171,6 +169,7 @@ export const SummariesPage = () => {
       )}
 
       <UploadSummaryDialog open={isUploadOpen} onOpenChange={setIsUploadOpen} onUploaded={handleUploaded} />
+      <ResearchReportDialog open={isResearchOpen} onOpenChange={setIsResearchOpen} onCreated={(summary) => { setIsResearchOpen(false); navigate(`/summaries/${summary.id}`); }} />
     </div>
   );
 };

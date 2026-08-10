@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.test.backendprojecty.dtos.request.NoteRequest;
 import org.test.backendprojecty.dtos.request.PaginationRequest;
 import org.test.backendprojecty.dtos.response.NoteResponse;
@@ -20,6 +21,8 @@ import org.test.backendprojecty.entity.FocusRoom;
 import org.test.backendprojecty.entity.FocusRoomParticipant;
 import org.test.backendprojecty.entity.Note;
 import org.test.backendprojecty.entity.User;
+import org.test.backendprojecty.entity.GenerationStatus;
+import org.test.backendprojecty.event.NoteCreatedEvent;
 import org.test.backendprojecty.exception.BadRequestException;
 import org.test.backendprojecty.exception.ResourceNotFoundException;
 import org.test.backendprojecty.mapper.NoteMapper;
@@ -65,6 +68,9 @@ class NoteServiceTest {
 
     @Mock
     private ArticleFetchService articleFetchService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private NoteService noteService;
@@ -122,7 +128,11 @@ class NoteServiceTest {
 
         assertNotNull(response);
         assertEquals("Test Note", response.getTitle());
-        verify(noteRepository).save(any(Note.class));
+        ArgumentCaptor<Note> noteCaptor = ArgumentCaptor.forClass(Note.class);
+        verify(noteRepository).save(noteCaptor.capture());
+        assertEquals("Some body", noteCaptor.getValue().getRawBody());
+        assertEquals(GenerationStatus.PENDING, noteCaptor.getValue().getEnrichmentStatus());
+        verify(eventPublisher).publishEvent(new NoteCreatedEvent(1L));
         verify(courseRepository, never()).findByIdAndUserIdAndDeletedFalse(any(), any());
     }
 

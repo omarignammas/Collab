@@ -58,6 +58,12 @@ public class CourseSummary {
     @Column(columnDefinition = "TEXT")
     private String diagramJson;
 
+    // Nullable for compatibility with existing production rows. A generated
+    // research report shares the Summary lifecycle without pretending to have
+    // an uploaded source file.
+    @Builder.Default
+    private Boolean researchReport = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

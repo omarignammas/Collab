@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
+import org.test.backendprojecty.dtos.request.ResearchReportRequest;
 import org.test.backendprojecty.dtos.response.CourseSummaryResponse;
 import org.test.backendprojecty.dtos.response.SharedUserResponse;
 import org.test.backendprojecty.entity.*;
@@ -141,6 +142,45 @@ class CourseSummaryServiceTest {
     }
 
     // --- onSummaryUploaded ---
+
+    @Test
+    void createResearchReport_SavesPendingReportAndPublishesGenerationEvent() {
+        when(currentUserProvider.getCurrentUser()).thenReturn(owner);
+        when(courseSummaryRepository.save(any(CourseSummary.class))).thenAnswer(invocation -> {
+            CourseSummary saved = invocation.getArgument(0);
+            saved.setId(301L);
+            return saved;
+        });
+
+        CourseSummaryResponse response = service.createResearchReport(ResearchReportRequest.builder()
+                .topic("Benchmark remote collaboration tools")
+                .build());
+
+        ArgumentCaptor<CourseSummary> captor = ArgumentCaptor.forClass(CourseSummary.class);
+        verify(courseSummaryRepository).save(captor.capture());
+        assertTrue(captor.getValue().getResearchReport());
+        assertEquals("research://generated", captor.getValue().getSourceFileUrl());
+        assertEquals(GenerationStatus.PENDING, captor.getValue().getStatus());
+        assertEquals("Research: Benchmark remote collaboration tools", response.getTitle());
+        verify(eventPublisher).publishEvent(new CourseSummaryUploadedEvent(301L));
+    }
+
+    @Test
+    void onSummaryUploaded_ResearchReport_GeneratesDecisionReadyMarkdown() {
+        summary.setResearchReport(true);
+        summary.setExtractedText("Compare Slack and Teams for a small remote team");
+        when(courseSummaryRepository.findById(100L)).thenReturn(Optional.of(summary));
+        when(llmApiClient.generateText(anyString(), eq(3000))).thenReturn("## Executive summary\nA concise comparison.");
+        when(courseSummaryRepository.save(any(CourseSummary.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.onSummaryUploaded(new CourseSummaryUploadedEvent(100L));
+
+        verify(llmApiClient).generateText(contains("Compare Slack and Teams"), eq(3000));
+        assertEquals(GenerationStatus.READY, summary.getStatus());
+        assertTrue(summary.getSummaryMarkdown().contains("Executive summary"));
+        verify(notificationService).notify(eq(owner), eq(NotificationType.SUMMARY_READY),
+                eq("Research report ready"), anyString(), eq("/summaries/100"));
+    }
 
     @Test
     void onSummaryUploaded_Pdf_WithDiagramFence_SplitsSummaryAndDiagram() {

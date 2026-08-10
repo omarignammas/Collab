@@ -171,7 +171,7 @@ export const FocusSessionProvider = ({ children }) => {
     // navigating its own tiny window to a full-size page.
     if (!isTauri() || getCurrentWindow().label !== 'main') return undefined;
     const unlisten = listen('widget-action', async (event) => {
-      const { action, text } = event.payload || {};
+      const { action, text, route } = event.payload || {};
       if (action === 'leave') leaveRoom();
       if (action === 'end') endRoomSession();
       // forceAi: the widget's mic is a dedicated "ask Collab" input, not a
@@ -183,6 +183,13 @@ export const FocusSessionProvider = ({ children }) => {
         await mainWindow?.show();
         await mainWindow?.setFocus();
         navigate(`/focus-rooms/${roomRef.current.code}`);
+      }
+      if (action === 'open-route' && route?.startsWith('/')) {
+        const mainWindow = await Window.getByLabel('main');
+        await mainWindow?.show();
+        await mainWindow?.unminimize();
+        await mainWindow?.setFocus();
+        navigate(route);
       }
     });
     return () => {

@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import focusRoomService from './focusRoomService';
 import taskService from './taskService';
 import workspaceAssistantService from './workspaceAssistantService';
+import courseSummaryService from './courseSummaryService';
 
 const today = () => format(new Date(), 'yyyy-MM-dd');
 
@@ -40,6 +41,27 @@ export const assistantCommandService = {
   async execute(rawCommand, history = []) {
     const command = rawCommand.trim();
     const lower = command.toLowerCase();
+
+    const researchPatterns = [
+      /(?:do|make|prepare|create|generate|run)\s+(?:for me\s+)?(?:a\s+)?(?:benchmark(?:ing)?|research|research report|report)\s+(?:for|on|about)\s+(.+)/i,
+      /^(?:benchmark(?:ing)?|research)\s+(?:(?:for|on|about)\s+)?(.+)/i,
+      /(?:could you|please).*?(?:benchmark(?:ing)?|research|report).*?(?:for|on|about)\s+(.+)/i,
+    ];
+    const researchMatch = researchPatterns.map((pattern) => command.match(pattern)).find(Boolean);
+    if (researchMatch?.[1]?.trim()) {
+      const topic = researchMatch[1].trim().replace(/[.!?]+$/, '');
+      const summary = await courseSummaryService.createResearchReport({
+        topic,
+        title: topic.length <= 90 ? `Research · ${topic}` : 'Collab research report',
+      });
+      return {
+        text: `I started the research report “${summary.title}”. I’ll tell you when it’s ready and open it in Summaries.`,
+        kind: 'research',
+        summary,
+        autoOpenWhenReady: true,
+        sources: [{ id: `summary-${summary.id}`, type: 'REPORT', title: summary.title, route: `/summaries/${summary.id}`, excerpt: `Research in progress: ${topic}` }],
+      };
+    }
 
     if (/(overdue|past due|late) tasks?/.test(lower)) {
       const result = await taskService.getAllTasks({ size: 100, sortField: 'dueDate', direction: 'ASC' });

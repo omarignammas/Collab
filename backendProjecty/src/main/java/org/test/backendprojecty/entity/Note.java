@@ -50,6 +50,9 @@ public class Note {
     @Column(columnDefinition = "TEXT")
     private String body;
 
+    @Column(columnDefinition = "TEXT")
+    private String rawBody;
+
     @ElementCollection
     @CollectionTable(name = "note_tags", joinColumns = @JoinColumn(name = "note_id"))
     @Column(name = "tag")
@@ -57,6 +60,28 @@ public class Note {
     private List<String> tags = new ArrayList<>();
 
     private String savedUrl;
+
+    @Column(length = 80)
+    private String theme;
+
+    @ElementCollection
+    @CollectionTable(name = "note_links", joinColumns = @JoinColumn(name = "note_id"))
+    @Column(name = "url", length = 1200)
+    @Builder.Default
+    private List<String> extractedLinks = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "note_time_references", joinColumns = @JoinColumn(name = "note_id"))
+    @Column(name = "time_reference", length = 255)
+    @Builder.Default
+    private List<String> timeReferences = new ArrayList<>();
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private GenerationStatus enrichmentStatus = GenerationStatus.PENDING;
+
+    @Builder.Default
+    private Boolean aiEnriched = false;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

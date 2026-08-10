@@ -15,6 +15,7 @@ import {
   Loader2,
   MessageCircle,
   Mic,
+  NotebookPen,
   Send,
   Sparkles,
   Square,
@@ -30,7 +31,9 @@ import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 import { useActivityTracking } from '../context/ActivityTrackingContext';
 import { useAuth } from '../hooks/useAuth';
 import assistantCommandService from '../services/assistantCommandService';
+import courseSummaryService from '../services/courseSummaryService';
 import focusRoomService from '../services/focusRoomService';
+import noteService from '../services/noteService';
 import notificationService from '../services/notificationService';
 import voiceService from '../services/voiceService';
 import { formatTrackedTime } from '../services/activityTracking';
@@ -248,6 +251,43 @@ const Composer = ({ value, onChange, onSubmit, onToggleVoice, voiceState }) => (
   </form>
 );
 
+const QuickNoteSurface = ({ value, onChange, onSave, onCancel, onToggleVoice, voiceState, saving }) => (
+  <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <p className="text-[15px] font-semibold text-foreground">Quick note</p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">Write naturally. Collab will format and organize it.</p>
+      </div>
+      <button type="button" onClick={onCancel} className="text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground">Cancel</button>
+    </div>
+
+    <div className="relative min-h-0 flex-1">
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Capture a thought, decision, link, or reminder..."
+        aria-label="Quick note"
+        className="h-full min-h-32 w-full resize-none rounded-2xl border border-border/70 bg-background/45 p-3 pr-11 text-[12px] leading-relaxed text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/45"
+        autoFocus
+      />
+      <button
+        type="button"
+        onClick={onToggleVoice}
+        disabled={voiceState === 'transcribing' || saving}
+        title={voiceState === 'recording' ? 'Finish voice note' : 'Add to note by voice'}
+        className={`absolute bottom-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full transition-colors ${voiceState === 'recording' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-foreground hover:bg-secondary/70'}`}
+      >
+        {voiceState === 'transcribing' ? <Loader2 className="h-4 w-4 animate-spin" /> : voiceState === 'recording' ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
+      </button>
+    </div>
+
+    <Button type="submit" size="sm" className="h-10 w-full rounded-full" disabled={!value.trim() || saving || voiceState !== 'idle'}>
+      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+      {saving ? 'Saving...' : 'Save and organize'}
+    </Button>
+  </form>
+);
+
 export const WidgetPage = () => {
   const { user } = useAuth();
   const { summary: activitySummary, refresh: refreshActivity } = useActivityTracking();
@@ -263,10 +303,16 @@ export const WidgetPage = () => {
   const [panel, setPanel] = useState('overview');
   const [conversation, setConversation] = useState([]);
   const [dailyFocusMinutes, setDailyFocusMinutes] = useState(0);
+  const [quickNoteMode, setQuickNoteMode] = useState(false);
+  const [quickNoteText, setQuickNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
   const swipeStart = useRef(null);
   const sessionRef = useRef(null);
   const lastSpokenText = useRef('');
   const spokenAudioRef = useRef(null);
+  const researchPollToken = useRef(0);
+  const quickNoteModeRef = useRef(false);
+  const discardTranscriptionRef = useRef(false);
 
   const refreshDigest = useCallback(async () => {
     refreshActivity();
@@ -297,6 +343,38 @@ export const WidgetPage = () => {
     setDailyFocusMinutes(bankedMinutes + completedRoomMinutes);
   }, [refreshActivity, user?.email]);
 
+  const watchResearchReport = useCallback(async (createdSummary) => {
+    const token = researchPollToken.current + 1;
+    researchPollToken.current = token;
+    for (let attempt = 0; attempt < 48; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      if (researchPollToken.current !== token) return;
+      try {
+        const report = await courseSummaryService.getSummaryById(createdSummary.id);
+        if (report.status === 'READY') {
+          const readyText = `Your report “${report.title}” is ready. I’m opening it in Summaries now.`;
+          const source = { id: `summary-${report.id}`, type: 'REPORT', title: report.title, route: `/summaries/${report.id}`, excerpt: 'Completed research report' };
+          setAssistantResult({ text: readyText, kind: 'research-ready', sources: [source] });
+          setConversation((previous) => [...previous, { role: 'assistant', text: readyText, sources: [source] }].slice(-8));
+          sendAction('open-route', { route: `/summaries/${report.id}` });
+          refreshDigest();
+          return;
+        }
+        if (report.status === 'FAILED' || report.status === 'CANCELLED') {
+          setAssistantResult({ text: `I could not finish “${report.title}”. Open Summaries to retry it.`, kind: 'error', sources: [] });
+          return;
+        }
+      } catch {
+        // Keep polling through brief network interruptions.
+      }
+    }
+    setAssistantResult({ text: `Your report is still processing. You can follow it in Summaries.`, kind: 'research', sources: [{ id: `summary-${createdSummary.id}`, type: 'REPORT', title: createdSummary.title, route: `/summaries/${createdSummary.id}`, excerpt: 'Research still processing' }] });
+  }, [refreshDigest]);
+
+  useEffect(() => () => {
+    researchPollToken.current += 1;
+  }, []);
+
   const runAssistant = async (rawCommand) => {
     const trimmed = rawCommand.trim();
     if (!trimmed) return;
@@ -308,6 +386,7 @@ export const WidgetPage = () => {
       const result = await assistantCommandService.execute(trimmed, history);
       setAssistantResult(result);
       setConversation((previous) => [...previous, { role: 'assistant', text: result.text, sources: result.sources || [] }].slice(-8));
+      if (result.autoOpenWhenReady && result.summary?.id) watchResearchReport(result.summary);
       refreshDigest();
     } catch (error) {
       const errorText = error.response?.data?.message || 'I could not complete that command. Please try again.';
@@ -319,9 +398,24 @@ export const WidgetPage = () => {
     }
   };
 
+  const handleTranscribed = (text) => {
+    if (discardTranscriptionRef.current) {
+      discardTranscriptionRef.current = false;
+      return;
+    }
+    if (quickNoteModeRef.current) {
+      setQuickNoteText((current) => (current ? `${current} ${text}` : text));
+      return;
+    }
+    runAssistant(text);
+  };
+
   const { state: voiceState, toggleRecording, stopRecording, startRecording } = useVoiceRecorder({
-    onTranscribed: runAssistant,
-    onError: () => setAssistantResult({ text: 'Microphone access or transcription failed. Please try again.', kind: 'error' }),
+    onTranscribed: handleTranscribed,
+    onError: () => {
+      discardTranscriptionRef.current = false;
+      setAssistantResult({ text: 'Microphone access or transcription failed. Please try again.', kind: 'error' });
+    },
   });
 
   const beginVoice = useCallback(() => {
@@ -339,6 +433,47 @@ export const WidgetPage = () => {
       stopRecording();
     }
     toggleRecording();
+  };
+
+  const beginQuickNote = useCallback(() => {
+    if (voiceState === 'recording') {
+      discardTranscriptionRef.current = true;
+      stopRecording();
+    }
+    setAssistantResult(null);
+    quickNoteModeRef.current = true;
+    setQuickNoteMode(true);
+  }, [stopRecording, voiceState]);
+
+  const cancelQuickNote = () => {
+    quickNoteModeRef.current = false;
+    if (voiceState === 'recording' || voiceState === 'transcribing') discardTranscriptionRef.current = true;
+    if (voiceState === 'recording') stopRecording();
+    setQuickNoteMode(false);
+    setQuickNoteText('');
+  };
+
+  const saveQuickNote = async (event) => {
+    event.preventDefault();
+    const body = quickNoteText.trim();
+    if (!body) return;
+    setSavingNote(true);
+    try {
+      const words = body.replace(/\s+/g, ' ').split(' ');
+      const title = `${words.slice(0, 7).join(' ')}${words.length > 7 ? '…' : ''}`;
+      const note = await noteService.createNote({ title, body, tags: [], savedUrl: null, courseId: null, taskId: null, roomCode: null });
+      const text = 'Saved. I’m organizing the note into a theme, topics, links, and time references.';
+      const source = { id: `note-${note.id}`, type: 'NOTE', title: note.title, route: '/notes', excerpt: body.slice(0, 140) };
+      quickNoteModeRef.current = false;
+      setQuickNoteMode(false);
+      setQuickNoteText('');
+      setAssistantResult({ text, kind: 'success', sources: [source] });
+      setConversation((previous) => [...previous, { role: 'assistant', text, sources: [source] }].slice(-8));
+    } catch (error) {
+      setAssistantResult({ text: error.response?.data?.message || 'I could not save that note. Please try again.', kind: 'error' });
+    } finally {
+      setSavingNote(false);
+    }
   };
 
   const handleTouchStart = (event) => {
@@ -384,10 +519,14 @@ export const WidgetPage = () => {
         event.preventDefault();
         beginVoice();
       }
+      if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        beginQuickNote();
+      }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [beginVoice]);
+  }, [beginQuickNote, beginVoice]);
 
   useEffect(() => {
     if (!assistantResult || assistantResult.kind === 'working' || !voiceReplies) return undefined;
@@ -487,6 +626,12 @@ export const WidgetPage = () => {
     return () => unlisten.then((fn) => fn());
   }, [beginVoice]);
 
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    const unlisten = listen('quick-note-hotkey', beginQuickNote);
+    return () => unlisten.then((fn) => fn());
+  }, [beginQuickNote]);
+
   const topApp = activitySummary.todayFocusApps?.[0] || activitySummary.todayTopApps?.[0] || null;
   const firstName = user?.firstName?.trim() || 'there';
 
@@ -504,17 +649,20 @@ export const WidgetPage = () => {
           <button type="button" title="Notifications" onClick={() => setPanel('notifications')} className={`h-1.5 rounded-full transition-all ${panel === 'notifications' ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
         </div>
       )}
-      {session ? (
-        <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</div>
-      ) : (
-        <div className="flex items-center gap-1.5">
-          <span className="font-numeric text-[9px] text-muted-foreground">{format(new Date(), 'EEE d')}</span>
-          <button type="button" title={panel === 'notifications' ? 'Back to today' : 'Notifications'} onClick={() => setPanel((current) => current === 'notifications' ? 'overview' : 'notifications')} className="relative flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground">
-            <Bell className="h-3.5 w-3.5" />
-            {unreadCount > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
-          </button>
-        </div>
-      )}
+      <div className="ml-auto flex items-center gap-1.5">
+        <button type="button" title="Quick note" onClick={beginQuickNote} className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${quickNoteMode ? 'bg-primary text-primary-foreground' : 'bg-secondary/70 text-muted-foreground hover:text-foreground'}`}><NotebookPen className="h-3.5 w-3.5" /></button>
+        {session ? (
+          <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <span className="font-numeric text-[9px] text-muted-foreground">{format(new Date(), 'EEE d')}</span>
+            <button type="button" title={panel === 'notifications' ? 'Back to today' : 'Notifications'} onClick={() => setPanel((current) => current === 'notifications' ? 'overview' : 'notifications')} className="relative flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground">
+              <Bell className="h-3.5 w-3.5" />
+              {unreadCount > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -538,10 +686,10 @@ export const WidgetPage = () => {
             {message.role === 'assistant' && message.sources?.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1 border-t border-border/50 pt-2" aria-label="Answer sources">
                 {message.sources.slice(0, 4).map((source) => (
-                  <span key={source.id} title={source.excerpt} className="inline-flex max-w-full items-center gap-1 rounded-md bg-primary/10 px-1.5 py-1 text-[9px] font-medium text-primary">
+                  <button type="button" key={source.id} title={source.excerpt} onClick={() => source.route && sendAction('open-route', { route: source.route })} className="inline-flex max-w-full items-center gap-1 rounded-md bg-primary/10 px-1.5 py-1 text-[9px] font-medium text-primary transition-colors hover:bg-primary/20">
                     <FileText className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">{source.type?.toLowerCase()} · {source.title}</span>
-                  </span>
+                  </button>
                 ))}
               </div>
             )}
@@ -558,7 +706,7 @@ export const WidgetPage = () => {
       <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/75 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onWheel={handleWheel} style={{ touchAction: 'pan-y' }}>
         {header}
 
-        {assistantView || (panel === 'notifications' ? (
+        {quickNoteMode ? <QuickNoteSurface value={quickNoteText} onChange={setQuickNoteText} onSave={saveQuickNote} onCancel={cancelQuickNote} onToggleVoice={toggleVoice} voiceState={voiceState} saving={savingNote} /> : assistantView || (panel === 'notifications' ? (
           <>
             <div className="animate-in fade-in slide-in-from-left-2 flex shrink-0 items-end justify-between duration-200"><div><p className="text-sm font-semibold text-foreground">Recent activity</p><p className="mt-0.5 text-[10px] text-muted-foreground">{session ? 'Swipe right for your Pomodoro' : 'Your latest signals from Collab'}</p></div><Bell className="mb-1 h-4 w-4 text-muted-foreground" /></div>
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5"><NotificationRows notifications={notifications} /></div>
@@ -591,7 +739,7 @@ export const WidgetPage = () => {
           />
         ))}
 
-        {(!session || panel === 'notifications' || assistantResult) && voiceState === 'idle' && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
+        {!quickNoteMode && (!session || panel === 'notifications' || assistantResult) && voiceState === 'idle' && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
       </div>
     </div>
   );

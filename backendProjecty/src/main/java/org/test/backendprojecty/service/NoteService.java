@@ -3,6 +3,7 @@ package org.test.backendprojecty.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.test.backendprojecty.config.PaginationUtils;
@@ -15,6 +16,8 @@ import org.test.backendprojecty.entity.FocusRoom;
 import org.test.backendprojecty.entity.Note;
 import org.test.backendprojecty.entity.Task;
 import org.test.backendprojecty.entity.User;
+import org.test.backendprojecty.entity.GenerationStatus;
+import org.test.backendprojecty.event.NoteCreatedEvent;
 import org.test.backendprojecty.exception.BadRequestException;
 import org.test.backendprojecty.exception.ResourceNotFoundException;
 import org.test.backendprojecty.mapper.NoteMapper;
@@ -41,6 +44,7 @@ public class NoteService {
     private final NoteMapper noteMapper;
     private final CurrentUserProvider currentUserProvider;
     private final ArticleFetchService articleFetchService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Course resolveCourse(Long courseId, User currentUser) {
         if (courseId == null) {
@@ -87,15 +91,19 @@ public class NoteService {
         Note note = Note.builder()
                 .title(request.getTitle())
                 .body(body)
+                .rawBody(body)
                 .tags(request.getTags() != null ? request.getTags() : Collections.emptyList())
                 .savedUrl(request.getSavedUrl())
                 .course(resolveCourse(request.getCourseId(), currentUser))
                 .task(resolveTask(request.getTaskId(), currentUser))
                 .room(resolveRoom(request.getRoomCode(), currentUser))
                 .user(currentUser)
+                .enrichmentStatus(GenerationStatus.PENDING)
+                .aiEnriched(false)
                 .build();
 
         note = noteRepository.save(note);
+        eventPublisher.publishEvent(new NoteCreatedEvent(note.getId()));
         return noteMapper.toResponse(note);
     }
 
@@ -137,12 +145,16 @@ public class NoteService {
 
         note.setTitle(request.getTitle());
         note.setBody(request.getBody());
+        note.setRawBody(request.getBody());
         note.setTags(request.getTags() != null ? request.getTags() : Collections.emptyList());
         note.setSavedUrl(request.getSavedUrl());
         note.setCourse(resolveCourse(request.getCourseId(), currentUser));
         note.setTask(resolveTask(request.getTaskId(), currentUser));
+        note.setEnrichmentStatus(GenerationStatus.PENDING);
+        note.setAiEnriched(false);
 
         note = noteRepository.save(note);
+        eventPublisher.publishEvent(new NoteCreatedEvent(note.getId()));
         return noteMapper.toResponse(note);
     }
 

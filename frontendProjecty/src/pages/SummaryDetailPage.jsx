@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, FileText, RotateCcw, Share2, Sparkles, HelpCircle, ArrowRight, X, Paperclip, Mic, Square, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, FileText, RotateCcw, Share2, Sparkles, HelpCircle, ArrowRight, X, Paperclip, Mic, Square, Loader2, RefreshCw, Search } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -162,9 +162,9 @@ export const SummaryDetailPage = () => {
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <PageHero
-          icon={FileText}
+          icon={summary.researchReport ? Search : FileText}
           title={summary.title}
-          subtitle={summary.courseTitle ? `From ${summary.courseTitle}` : (!summary.isOwner ? `Shared by ${summary.ownerName}` : undefined)}
+          subtitle={summary.courseTitle ? `${summary.researchReport ? 'Research for' : 'From'} ${summary.courseTitle}` : (!summary.isOwner ? `Shared by ${summary.ownerName}` : summary.researchReport ? 'Collab research report' : undefined)}
         />
         {summary.isOwner && (
           <Button variant="outline" size="icon" onClick={() => setIsShareOpen(true)} title="Share">
@@ -178,7 +178,7 @@ export const SummaryDetailPage = () => {
           <CardContent className="flex items-center justify-between gap-3 p-6">
             <p className="flex items-center gap-3 text-sm text-muted-foreground">
               <Sparkles className="h-4 w-4 animate-pulse text-primary" />
-              Generating your summary and diagram…
+              {summary.researchReport ? 'Researching, comparing, and preparing your report…' : 'Generating your summary and diagram…'}
             </p>
             {summary.isOwner && (
               <Button variant="outline" size="sm" onClick={handleCancel} disabled={cancelling}>
@@ -193,7 +193,7 @@ export const SummaryDetailPage = () => {
       {summary.status === 'FAILED' && (
         <Card className="border-border/80 bg-card">
           <CardContent className="flex items-center justify-between gap-3 p-6">
-            <p className="text-sm text-muted-foreground">Couldn't generate a summary for this file.</p>
+            <p className="text-sm text-muted-foreground">{summary.researchReport ? 'Could not complete this research report.' : "Couldn't generate a summary for this file."}</p>
             {summary.isOwner && (
               <Button variant="outline" size="sm" onClick={handleRetry} disabled={retrying}>
                 <RotateCcw className={`mr-2 h-3.5 w-3.5 ${retrying ? 'animate-spin' : ''}`} />
@@ -220,7 +220,7 @@ export const SummaryDetailPage = () => {
 
       {summary.status === 'READY' && (
         <div className="space-y-6">
-          {summary.diagramJson && <ConceptMap json={summary.diagramJson} />}
+          {!summary.researchReport && summary.diagramJson && <ConceptMap json={summary.diagramJson} />}
 
           <Card className="border-border/80 bg-card">
             <CardContent className="p-6">
@@ -230,7 +230,7 @@ export const SummaryDetailPage = () => {
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between">
+          {!summary.researchReport && <div className="flex items-center justify-between">
             <p className="section-header">
               <HelpCircle className="h-4 w-4 text-primary" />
               quizzes
@@ -238,9 +238,9 @@ export const SummaryDetailPage = () => {
             <Button size="sm" onClick={() => setIsQuizDialogOpen(true)}>
               Generate Quiz
             </Button>
-          </div>
+          </div>}
 
-          {quizzes.length === 0 ? (
+          {!summary.researchReport && (quizzes.length === 0 ? (
             <p className="text-sm text-muted-foreground">No quizzes yet — generate one to test yourself on this material.</p>
           ) : (
             <div className="space-y-2">
@@ -292,7 +292,7 @@ export const SummaryDetailPage = () => {
                 </Card>
               ))}
             </div>
-          )}
+          ))}
         </div>
       )}
 
