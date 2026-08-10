@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
 import {
+  AppWindow,
   Bell,
   CheckCircle2,
   Clock3,
@@ -22,12 +23,17 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, isSameDay } from 'date-fns';
 import { Button } from '../components/ui/button';
 import { CircularProgress } from '../components/shared/CircularProgress';
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
+import { useActivityTracking } from '../context/ActivityTrackingContext';
+import { useAuth } from '../hooks/useAuth';
 import assistantCommandService from '../services/assistantCommandService';
+import focusRoomService from '../services/focusRoomService';
 import notificationService from '../services/notificationService';
+import voiceService from '../services/voiceService';
+import { formatTrackedTime } from '../services/activityTracking';
 
 const sendAction = (action, extra) => {
   if (isTauri()) emit('widget-action', { action, ...extra });
@@ -57,47 +63,146 @@ const formatElapsed = (startedAt) => {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 };
 
+const formatFocusTime = (minutes = 0) => {
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+};
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const speechChunks = (value) => {
+  const clean = value
+    .replace(/\[S\d+]/g, '')
+    .replace(/[*_#`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+  const chunks = [];
+  for (const sentence of sentences) {
+    const next = sentence.trim();
+    if (!next) continue;
+    if (chunks.length && `${chunks[chunks.length - 1]} ${next}`.length <= 170) {
+      chunks[chunks.length - 1] = `${chunks[chunks.length - 1]} ${next}`;
+    } else if (next.length <= 170) {
+      chunks.push(next);
+    } else {
+      const words = next.split(' ');
+      let chunk = '';
+      words.forEach((word) => {
+        if (`${chunk} ${word}`.trim().length > 170 && chunk) {
+          chunks.push(chunk);
+          chunk = word;
+        } else {
+          chunk = `${chunk} ${word}`.trim();
+        }
+      });
+      if (chunk) chunks.push(chunk);
+    }
+  }
+  return chunks.slice(0, 6);
+};
+
 const RecordingSurface = ({ state, elapsed, onStop }) => {
   const processing = state === 'transcribing';
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-2">
-      <div className="relative flex h-20 w-20 items-center justify-center">
-        <span className={`absolute inset-0 rounded-full ${processing ? 'bg-primary/10' : 'bg-destructive/10 animate-ping'}`} />
-        <span className={`absolute inset-2 rounded-full border ${processing ? 'border-primary/30' : 'border-destructive/30 animate-pulse'}`} />
-        <div className={`relative flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg ${processing ? 'bg-primary' : 'bg-destructive'}`}>
-          {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
-        </div>
+    <div className="flex flex-1 flex-col items-center justify-center gap-5 px-3">
+      <div className="flex h-20 items-center gap-1.5 rounded-full border border-white/10 bg-background/35 px-5 shadow-sm backdrop-blur-xl">
+        {processing ? (
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        ) : (
+          [8, 18, 30, 22, 38, 26, 14, 24, 10].map((height, index) => (
+            <span
+              key={index}
+              className="w-1 rounded-full bg-primary animate-pulse"
+              style={{ height: `${height}px`, animationDelay: `${index * 80}ms` }}
+            />
+          ))
+        )}
+        {!processing && (
+          <div className="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+            <Mic className="h-4 w-4" />
+          </div>
+        )}
       </div>
 
       <div className="text-center">
-        <p className="text-sm font-semibold text-foreground">{processing ? 'Understanding you' : 'Listening'}</p>
-        <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">
-          {processing ? 'Turning your words into an action...' : elapsed}
+        <p className="text-[15px] font-semibold text-foreground">{processing ? 'Thinking' : 'Listening'}</p>
+        <p className="mt-1 font-numeric text-[11px] tabular-nums text-muted-foreground">
+          {processing ? 'One moment...' : elapsed}
         </p>
       </div>
-
-      {!processing && (
-        <div className="flex h-8 items-center gap-1" aria-label="Recording audio level">
-          {[3, 7, 11, 16, 9, 5, 13, 8, 4].map((height, index) => (
-            <span
-              key={index}
-              className="w-1 rounded-full bg-destructive/80 animate-pulse"
-              style={{ height: `${height * 2}px`, animationDelay: `${index * 90}ms` }}
-            />
-          ))}
-        </div>
-      )}
 
       {!processing && (
         <button
           type="button"
           onClick={onStop}
-          className="flex items-center gap-2 rounded-full border border-border/70 bg-secondary/80 px-4 py-2 text-[11px] font-medium text-foreground transition-colors hover:bg-secondary"
+          className="flex h-10 items-center gap-2 rounded-full border border-border/70 bg-secondary/80 px-4 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-secondary"
         >
           <Square className="h-3 w-3 fill-current" />
-          Finish command
+          Finish
         </button>
       )}
+    </div>
+  );
+};
+
+const DailyOverview = ({ firstName, topApp, focusMinutes, focusedAppSeconds }) => {
+  const hasFocusOverlap = Boolean(topApp?.focusSeconds);
+  const topAppTime = topApp
+    ? formatTrackedTime(hasFocusOverlap ? topApp.focusSeconds : topApp.seconds)
+    : '0m';
+  const focusTime = formatFocusTime(focusMinutes);
+  const insight = focusMinutes > 0 && hasFocusOverlap
+    ? `${focusTime} of focused work today. ${topApp.name} carried most of the session.`
+    : focusMinutes > 0 && topApp
+      ? `${focusTime} of focused work today. ${topApp.name} led your desktop time.`
+    : focusMinutes > 0
+      ? `You have banked ${focusTime} of focused work today.`
+      : topApp
+        ? `${topApp.name} led your desktop time. One focused block would round out the day.`
+        : 'Your day is open. One focused block is a good place to begin.';
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col justify-between gap-3 py-0.5">
+      <div>
+        <p className="text-[22px] font-semibold leading-[1.2] text-foreground">
+          {getGreeting()}, {firstName}.
+        </p>
+        <p className="mt-2 text-[13px] leading-5 text-muted-foreground">{insight}</p>
+      </div>
+
+      <div className="grid grid-cols-2 overflow-hidden rounded-[20px] border border-border/60 bg-background/30 shadow-sm backdrop-blur-xl">
+        <div className="min-w-0 border-r border-border/60 p-2.5">
+          <div className="mb-2 flex h-7 w-7 items-center justify-center overflow-hidden rounded-[9px] bg-secondary text-foreground">
+            {topApp?.iconDataUrl
+              ? <img src={topApp.iconDataUrl} alt="" className="h-full w-full object-cover" />
+              : <AppWindow className="h-4 w-4" />}
+          </div>
+          <p className="text-[9px] font-semibold uppercase text-muted-foreground">{hasFocusOverlap ? 'Focus app' : 'Most used'}</p>
+          <p className="mt-1 truncate text-[12px] font-semibold text-foreground" title={topApp?.name || 'No activity yet'}>
+            {topApp?.name || 'No activity yet'}
+          </p>
+          <p className="mt-0.5 font-numeric text-[10px] text-muted-foreground">{topAppTime} {hasFocusOverlap ? 'in sessions' : 'today'}</p>
+        </div>
+
+        <div className="min-w-0 p-2.5">
+          <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-[9px] bg-primary/10 text-primary">
+            <Clock3 className="h-4 w-4" />
+          </div>
+          <p className="text-[9px] font-semibold uppercase text-muted-foreground">Daily focus</p>
+          <p className="mt-1 font-numeric text-[17px] font-semibold text-foreground">{focusTime}</p>
+          <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+            {focusedAppSeconds > 0 ? `${formatTrackedTime(focusedAppSeconds)} app-verified` : 'banked today'}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -144,6 +249,8 @@ const Composer = ({ value, onChange, onSubmit, onToggleVoice, voiceState }) => (
 );
 
 export const WidgetPage = () => {
+  const { user } = useAuth();
+  const { summary: activitySummary, refresh: refreshActivity } = useActivityTracking();
   const [session, setSession] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -153,35 +260,54 @@ export const WidgetPage = () => {
   const [elapsed, setElapsed] = useState('00:00');
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [speaking, setSpeaking] = useState(false);
-  const [panel, setPanel] = useState('pomodoro');
+  const [panel, setPanel] = useState('overview');
   const [conversation, setConversation] = useState([]);
+  const [dailyFocusMinutes, setDailyFocusMinutes] = useState(0);
   const swipeStart = useRef(null);
   const sessionRef = useRef(null);
   const lastSpokenText = useRef('');
+  const spokenAudioRef = useRef(null);
 
-  const refreshDigest = async () => {
-    try {
-      const [list, count] = await Promise.all([
-        notificationService.getAllNotifications({ size: 5 }),
-        notificationService.getUnreadCount(),
-      ]);
-      setNotifications(list.content || []);
-      setUnreadCount(count || 0);
-    } catch {
-      // The widget remains usable for voice commands if the digest is offline.
-    }
-  };
+  const refreshDigest = useCallback(async () => {
+    refreshActivity();
+    const [listResult, countResult, entriesResult, roomsResult] = await Promise.allSettled([
+      notificationService.getAllNotifications({ size: 5 }),
+      notificationService.getUnreadCount(),
+      focusRoomService.getTimeEntries(),
+      focusRoomService.getAllRooms({ size: 100 }),
+    ]);
+
+    if (listResult.status === 'fulfilled') setNotifications(listResult.value.content || []);
+    if (countResult.status === 'fulfilled') setUnreadCount(countResult.value || 0);
+
+    const now = new Date();
+    const bankedMinutes = entriesResult.status === 'fulfilled'
+      ? (entriesResult.value || [])
+        .filter((entry) => entry.earnedAt && isSameDay(new Date(entry.earnedAt), now))
+        .reduce((total, entry) => total + (entry.minutesFocused || 0), 0)
+      : 0;
+    const completedRoomMinutes = roomsResult.status === 'fulfilled'
+      ? (roomsResult.value.content || [])
+        .filter((room) => room.status === 'COMPLETED' && room.updatedAt && isSameDay(new Date(room.updatedAt), now))
+        .reduce((total, room) => {
+          const participant = room.participants?.find((entry) => entry.email === user?.email);
+          return total + (participant?.minutesFocused || 0);
+        }, 0)
+      : 0;
+    setDailyFocusMinutes(bankedMinutes + completedRoomMinutes);
+  }, [refreshActivity, user?.email]);
 
   const runAssistant = async (rawCommand) => {
     const trimmed = rawCommand.trim();
     if (!trimmed) return;
     setCommand('');
-    setConversation((previous) => [...previous, { role: 'user', text: trimmed }].slice(-6));
+    const history = conversation.slice(-6);
+    setConversation((previous) => [...previous, { role: 'user', text: trimmed }].slice(-8));
     setAssistantResult({ text: trimmed, kind: 'working' });
     try {
-      const result = await assistantCommandService.execute(trimmed);
+      const result = await assistantCommandService.execute(trimmed, history);
       setAssistantResult(result);
-      setConversation((previous) => [...previous, { role: 'assistant', text: result.text }].slice(-6));
+      setConversation((previous) => [...previous, { role: 'assistant', text: result.text, sources: result.sources || [] }].slice(-8));
       refreshDigest();
     } catch (error) {
       const errorText = error.response?.data?.message || 'I could not complete that command. Please try again.';
@@ -189,7 +315,7 @@ export const WidgetPage = () => {
         text: errorText,
         kind: 'error',
       });
-      setConversation((previous) => [...previous, { role: 'assistant', text: errorText }].slice(-6));
+      setConversation((previous) => [...previous, { role: 'assistant', text: errorText, sources: [] }].slice(-8));
     }
   };
 
@@ -200,7 +326,6 @@ export const WidgetPage = () => {
 
   const beginVoice = useCallback(() => {
     if (voiceState !== 'idle') return;
-    setPanel('notifications');
     setAssistantResult(null);
     setRecordingStartedAt(Date.now());
     startRecording();
@@ -245,7 +370,7 @@ export const WidgetPage = () => {
       clearTimeout(initialRefresh);
       clearInterval(interval);
     };
-  }, []);
+  }, [refreshDigest]);
 
   useEffect(() => {
     if (voiceState !== 'recording' || !recordingStartedAt) return undefined;
@@ -265,21 +390,61 @@ export const WidgetPage = () => {
   }, [beginVoice]);
 
   useEffect(() => {
-    if (!assistantResult || assistantResult.kind === 'working' || !voiceReplies || !window.speechSynthesis) return undefined;
+    if (!assistantResult || assistantResult.kind === 'working' || !voiceReplies) return undefined;
     const text = assistantResult.text;
     if (!text || text === lastSpokenText.current) return undefined;
     lastSpokenText.current = text;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const preferredVoice = window.speechSynthesis.getVoices().find((voice) => /Samantha|Karen|Daniel|Alex|Google US English/i.test(voice.name));
-    if (preferredVoice) utterance.voice = preferredVoice;
-    utterance.rate = 1.02;
-    utterance.pitch = 1;
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-    return () => window.speechSynthesis.cancel();
+    let cancelled = false;
+    let objectUrl = null;
+
+    const playAudio = (audio) => new Promise((resolve, reject) => {
+      audio.onended = resolve;
+      audio.onerror = reject;
+      audio.play().catch(reject);
+    });
+
+    const systemFallback = () => {
+      if (!window.speechSynthesis || cancelled) return;
+      const utterance = new SpeechSynthesisUtterance(text.replace(/\[S\d+]/g, ''));
+      const preferredVoice = window.speechSynthesis.getVoices().find((voice) => /Samantha|Karen|Daniel|Alex|Google US English/i.test(voice.name));
+      if (preferredVoice) utterance.voice = preferredVoice;
+      utterance.rate = 1.01;
+      utterance.pitch = 1;
+      utterance.onend = () => setSpeaking(false);
+      utterance.onerror = () => setSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    };
+
+    const speak = async () => {
+      setSpeaking(true);
+      try {
+        for (const chunk of speechChunks(text)) {
+          if (cancelled) return;
+          const blob = await voiceService.synthesize(chunk);
+          if (cancelled) return;
+          objectUrl = URL.createObjectURL(blob);
+          const audio = new Audio(objectUrl);
+          spokenAudioRef.current = audio;
+          await playAudio(audio);
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
+        if (!cancelled) setSpeaking(false);
+      } catch {
+        if (!cancelled) systemFallback();
+      }
+    };
+
+    window.speechSynthesis?.cancel();
+    speak();
+    return () => {
+      cancelled = true;
+      spokenAudioRef.current?.pause();
+      spokenAudioRef.current = null;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      window.speechSynthesis?.cancel();
+      setSpeaking(false);
+    };
   }, [assistantResult, voiceReplies]);
 
   useEffect(() => {
@@ -305,13 +470,14 @@ export const WidgetPage = () => {
     const unlistenClear = listen('session-cleared', () => {
       sessionRef.current = null;
       setSession(null);
-      setPanel('digest');
+      setPanel('overview');
+      refreshDigest();
     });
     return () => {
       unlistenUpdate.then((fn) => fn());
       unlistenClear.then((fn) => fn());
     };
-  }, []);
+  }, [refreshDigest]);
 
   useEffect(() => {
     if (!isTauri()) return undefined;
@@ -321,13 +487,16 @@ export const WidgetPage = () => {
     return () => unlisten.then((fn) => fn());
   }, [beginVoice]);
 
+  const topApp = activitySummary.todayFocusApps?.[0] || activitySummary.todayTopApps?.[0] || null;
+  const firstName = user?.firstName?.trim() || 'there';
+
   const header = (
     <div className="flex shrink-0 items-center justify-between">
       <div className="flex items-center gap-1.5">
         <div className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-primary text-primary-foreground">
           <FolderKanban className="h-3 w-3" />
         </div>
-        <span className="text-[11px] font-semibold tracking-tight text-foreground">Collab</span>
+        <span className="text-[11px] font-semibold text-foreground">Collab</span>
         </div>
       {session && (
         <div className="ml-2 flex flex-1 items-center gap-1" aria-label="Widget pages">
@@ -335,10 +504,17 @@ export const WidgetPage = () => {
           <button type="button" title="Notifications" onClick={() => setPanel('notifications')} className={`h-1.5 rounded-full transition-all ${panel === 'notifications' ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
         </div>
       )}
-      <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
-        {session ? <><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</> : <><Clock3 className="h-3 w-3" />Today</>}
-        {unreadCount > 0 && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] text-destructive-foreground">{unreadCount > 9 ? '9+' : unreadCount}</span>}
-      </div>
+      {session ? (
+        <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <span className="font-numeric text-[9px] text-muted-foreground">{format(new Date(), 'EEE d')}</span>
+          <button type="button" title={panel === 'notifications' ? 'Back to today' : 'Notifications'} onClick={() => setPanel((current) => current === 'notifications' ? 'overview' : 'notifications')} className="relative flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground">
+            <Bell className="h-3.5 w-3.5" />
+            {unreadCount > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -358,7 +534,17 @@ export const WidgetPage = () => {
       <div className="min-h-0 max-h-44 space-y-2 overflow-y-auto rounded-2xl bg-muted/60 px-3 py-3 text-xs leading-relaxed text-foreground/85">
         {conversation.map((message, index) => (
           <div key={`${message.role}-${index}`} className={message.role === 'user' ? 'ml-4 rounded-xl bg-primary/10 px-2.5 py-2 text-foreground' : 'mr-2 rounded-xl bg-background/45 px-2.5 py-2 text-foreground/85'}>
-            {message.text}
+            <p className="whitespace-pre-line">{message.text}</p>
+            {message.role === 'assistant' && message.sources?.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1 border-t border-border/50 pt-2" aria-label="Answer sources">
+                {message.sources.slice(0, 4).map((source) => (
+                  <span key={source.id} title={source.excerpt} className="inline-flex max-w-full items-center gap-1 rounded-md bg-primary/10 px-1.5 py-1 text-[9px] font-medium text-primary">
+                    <FileText className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">{source.type?.toLowerCase()} · {source.title}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {speaking && <span className="mt-2 flex items-center gap-1.5 text-[10px] text-primary"><Volume2 className="h-3 w-3 animate-pulse" />Speaking</span>}
@@ -372,9 +558,9 @@ export const WidgetPage = () => {
       <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/75 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onWheel={handleWheel} style={{ touchAction: 'pan-y' }}>
         {header}
 
-        {assistantView || (session && panel === 'notifications' ? (
+        {assistantView || (panel === 'notifications' ? (
           <>
-            <div className="animate-in fade-in slide-in-from-left-2 flex shrink-0 items-end justify-between duration-200"><div><p className="text-sm font-semibold text-foreground">Recent activity</p><p className="mt-0.5 text-[10px] text-muted-foreground">Swipe right for your Pomodoro</p></div><Bell className="mb-1 h-4 w-4 text-muted-foreground" /></div>
+            <div className="animate-in fade-in slide-in-from-left-2 flex shrink-0 items-end justify-between duration-200"><div><p className="text-sm font-semibold text-foreground">Recent activity</p><p className="mt-0.5 text-[10px] text-muted-foreground">{session ? 'Swipe right for your Pomodoro' : 'Your latest signals from Collab'}</p></div><Bell className="mb-1 h-4 w-4 text-muted-foreground" /></div>
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5"><NotificationRows notifications={notifications} /></div>
           </>
         ) : session ? (
@@ -397,15 +583,12 @@ export const WidgetPage = () => {
             </div>
           </>
         ) : (
-          <>
-            <div className="flex shrink-0 items-end justify-between">
-              <div><p className="text-sm font-semibold text-foreground">Your day, at a glance</p><p className="mt-0.5 text-[10px] text-muted-foreground">Recent signals from Collab</p></div>
-              <Bell className="mb-1 h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
-              <NotificationRows notifications={notifications} />
-            </div>
-          </>
+          <DailyOverview
+            firstName={firstName}
+            topApp={topApp}
+            focusMinutes={dailyFocusMinutes}
+            focusedAppSeconds={activitySummary.focusedAppSeconds || 0}
+          />
         ))}
 
         {(!session || panel === 'notifications' || assistantResult) && voiceState === 'idle' && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}

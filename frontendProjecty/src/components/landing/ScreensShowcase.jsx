@@ -38,7 +38,7 @@ const FOCUS_TAB_ADVANCE_MS = 16000;
 const SIDEBAR_NAV = [
   { label: 'Dashboard', icon: Home, tabKey: 'dashboard' },
   { label: 'Tasks', icon: ListTodo, tabKey: 'tasks' },
-  { label: 'Courses', icon: LayoutGrid, tabKey: 'courses' },
+  { label: 'Projects', icon: LayoutGrid, tabKey: 'courses' },
   { label: 'Calendar', icon: CalendarDays, tabKey: 'calendar' },
   { label: 'Focus Rooms', icon: Timer, tabKey: 'focus' },
   { label: 'Friends', icon: Users },

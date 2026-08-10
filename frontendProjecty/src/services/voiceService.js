@@ -10,6 +10,11 @@ export const voiceService = {
     });
     return response.data;
   },
+
+  async synthesize(text) {
+    const response = await api.post('/assistant/speech', { text }, { responseType: 'blob' });
+    return response.data;
+  },
 };
 
 export default voiceService;

@@ -8,6 +8,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -170,6 +171,53 @@ public class LlmApiClient {
             throw new ExternalApiException("The transcription service returned an unexpected response.");
         }
         return textNode.asText().trim();
+    }
+
+    // Groq's Orpheus endpoint returns expressive WAV audio. Keeping this in the
+    // same client means transcription, reasoning, and speech share one API key
+    // and the same production timeout/error handling.
+    public byte[] synthesizeSpeech(String text) {
+        if (!isConfigured()) {
+            throw new ExternalApiException(
+                    "AI generation is not configured. Set the GROQ_API_KEY environment variable to enable it.");
+        }
+
+        String spoken = text
+                .replaceAll("\\[S\\d+]", "")
+                .replaceAll("[*_#`]", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (spoken.length() > 180) {
+            spoken = spoken.substring(0, 179).trim() + "…";
+        }
+
+        Map<String, Object> body = Map.of(
+                "model", "canopylabs/orpheus-v1-english",
+                "voice", "hannah",
+                "input", "[warm] " + spoken,
+                "response_format", "wav"
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiKey);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<byte[]> response = restTemplate.postForEntity(
+                    baseUrl + "/audio/speech", entity, byte[].class);
+            byte[] audio = response.getBody();
+            if (audio == null || audio.length == 0) {
+                throw new ExternalApiException("The speech service returned an empty response.");
+            }
+            return audio;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.warn("Groq speech call failed: {} {}", e.getStatusCode(), e.getMessage());
+            throw new ExternalApiException("Speech generation failed (" + e.getStatusCode() + "). Please try again later.");
+        } catch (ResourceAccessException e) {
+            log.warn("Groq speech network error: {}", e.getMessage());
+            throw new ExternalApiException("Could not reach the speech service. Please try again later.");
+        }
     }
 
     private String callGroq(Map<String, Object> body) {

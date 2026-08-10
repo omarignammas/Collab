@@ -41,7 +41,7 @@ export const TaskItem = ({ task, onTaskUpdated, onTaskDeleted }) => {
   const {toast} = useToast();
   const { user } = useAuth();
 
-  // A shared-course task list shows every teammate's tasks — you can only
+  // A shared-project task list shows every teammate's tasks — you can only
   // check off / edit / delete the ones actually assigned to you.
   const isMine = !task.assigneeId || task.assigneeId === user?.id;
 

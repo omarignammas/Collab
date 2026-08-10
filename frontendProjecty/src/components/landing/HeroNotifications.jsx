@@ -29,7 +29,7 @@ const CARDS = [
   {
     key: 'course-completed',
     icon: GraduationCap,
-    title: 'Course completed',
+    title: 'Project completed',
     body: 'Data Structures & Algorithms — 100% done.',
     position: 'left-[calc(50%_-_660px)] top-[48%]',
     delay: 6600,

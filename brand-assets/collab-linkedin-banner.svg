@@ -1,0 +1,56 @@
+<svg width="1584" height="396" viewBox="0 0 1584 396" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1584" height="396" fill="#15120F"/>
+  <rect width="1584" height="396" fill="url(#backgroundWash)"/>
+  <path d="M1060 42C1255 34 1401 91 1497 214" stroke="#E87345" stroke-width="2" stroke-opacity="0.28"/>
+  <path d="M1032 84C1222 70 1354 118 1462 242" stroke="#FFF2E8" stroke-width="1.5" stroke-opacity="0.15"/>
+  <path d="M1008 130C1183 116 1302 155 1408 276" stroke="#E87345" stroke-width="1.5" stroke-opacity="0.2"/>
+  <g opacity="0.24">
+    <rect x="1038" y="74" width="296" height="184" rx="22" fill="#241C17" stroke="#F5D5C4" stroke-opacity="0.24"/>
+    <rect x="1070" y="110" width="112" height="12" rx="6" fill="#F5D5C4" fill-opacity="0.26"/>
+    <rect x="1070" y="145" width="205" height="10" rx="5" fill="#F5D5C4" fill-opacity="0.16"/>
+    <rect x="1070" y="170" width="154" height="10" rx="5" fill="#F5D5C4" fill-opacity="0.16"/>
+    <rect x="1070" y="206" width="44" height="24" rx="12" fill="#E87345" fill-opacity="0.6"/>
+    <rect x="1124" y="206" width="44" height="24" rx="12" fill="#E87345" fill-opacity="0.35"/>
+    <rect x="1178" y="206" width="44" height="24" rx="12" fill="#E87345" fill-opacity="0.22"/>
+  </g>
+  <g opacity="0.55">
+    <circle cx="1018" cy="102" r="7" fill="#E87345"/>
+    <circle cx="1368" cy="88" r="6" fill="#FFF2E8"/>
+    <circle cx="1450" cy="244" r="8" fill="#E87345"/>
+    <circle cx="1160" cy="298" r="5" fill="#FFF2E8"/>
+  </g>
+  <g filter="url(#softShadow)">
+    <rect x="114" y="70" width="256" height="256" rx="58" fill="#E87345"/>
+    <rect x="114" y="70" width="256" height="256" rx="58" fill="url(#markGlow)" opacity="0.68"/>
+    <path d="M184 159C184 149.059 192.059 141 202 141H229.989C235.961 141 241.542 143.959 244.892 148.903L253.402 161.463C256.752 166.407 262.333 169.366 268.305 169.366H289C298.941 169.366 307 177.425 307 187.366V236C307 245.941 298.941 254 289 254H202C192.059 254 184 245.941 184 236V159Z" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="219" y="198" width="12" height="34" rx="6" fill="white"/>
+    <rect x="243" y="198" width="12" height="23" rx="6" fill="white"/>
+    <rect x="267" y="198" width="12" height="46" rx="6" fill="white"/>
+  </g>
+  <text x="422" y="174" fill="#FFF7EF" font-family="Inter, SF Pro Display, Arial, sans-serif" font-size="88" font-weight="850" letter-spacing="-2.5">Collab</text>
+  <text x="426" y="224" fill="#F4B28C" font-family="Inter, SF Pro Text, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="3.5">AI PROJECT WORKSPACE</text>
+  <text x="426" y="270" fill="#DDD1C8" font-family="Inter, SF Pro Text, Arial, sans-serif" font-size="30" font-weight="500">Projects, focus rooms, tasks, reports, and team intelligence in one calm desktop app.</text>
+  <g transform="translate(426 304)">
+    <rect width="142" height="36" rx="18" fill="#FFF2E8" fill-opacity="0.1" stroke="#FFF2E8" stroke-opacity="0.18"/>
+    <text x="20" y="24" fill="#FFF2E8" font-family="Inter, SF Pro Text, Arial, sans-serif" font-size="15" font-weight="650">Focus rooms</text>
+    <rect x="158" width="102" height="36" rx="18" fill="#FFF2E8" fill-opacity="0.1" stroke="#FFF2E8" stroke-opacity="0.18"/>
+    <text x="178" y="24" fill="#FFF2E8" font-family="Inter, SF Pro Text, Arial, sans-serif" font-size="15" font-weight="650">AI briefs</text>
+    <rect x="276" width="128" height="36" rx="18" fill="#FFF2E8" fill-opacity="0.1" stroke="#FFF2E8" stroke-opacity="0.18"/>
+    <text x="296" y="24" fill="#FFF2E8" font-family="Inter, SF Pro Text, Arial, sans-serif" font-size="15" font-weight="650">Team tasks</text>
+  </g>
+  <defs>
+    <radialGradient id="backgroundWash" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(206 76) rotate(18) scale(1390 550)">
+      <stop stop-color="#3A241A"/>
+      <stop offset="0.44" stop-color="#15120F"/>
+      <stop offset="1" stop-color="#090807"/>
+    </radialGradient>
+    <radialGradient id="markGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(173 110) rotate(45) scale(270)">
+      <stop stop-color="#FFB68E"/>
+      <stop offset="0.54" stop-color="#E87345"/>
+      <stop offset="1" stop-color="#C95B32"/>
+    </radialGradient>
+    <filter id="softShadow" x="74" y="38" width="336" height="336" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+</svg>

@@ -21,6 +21,7 @@ export const ActivityTrackingProvider = ({ children }) => {
   const [currentApp, setCurrentApp] = useState(null);
   const [entries, setEntries] = useState(readActivityEntries);
   const lastSampleRef = useRef(0);
+  const focusContextRef = useRef(null);
 
   const refresh = useCallback(() => setEntries(readActivityEntries()), []);
 
@@ -29,6 +30,10 @@ export const ActivityTrackingProvider = ({ children }) => {
     setEnabled(Boolean(nextEnabled));
     lastSampleRef.current = Date.now();
     if (!nextEnabled) setCurrentApp(null);
+  }, []);
+
+  const setFocusContext = useCallback((context) => {
+    focusContextRef.current = context?.active ? context : null;
   }, []);
 
   useEffect(() => {
@@ -46,7 +51,7 @@ export const ActivityTrackingProvider = ({ children }) => {
       lastSampleRef.current = now;
       setCurrentApp(app);
       if (app && app.bundleId !== 'com.collab.desktop') {
-        setEntries(recordActivity(app, elapsedSeconds));
+        setEntries(recordActivity(app, elapsedSeconds, new Date(), focusContextRef.current));
       }
     };
 
@@ -63,6 +68,7 @@ export const ActivityTrackingProvider = ({ children }) => {
     enabled,
     setTracking,
     currentApp,
+    setFocusContext,
     entries,
     summary: buildActivitySummary(entries),
     refresh,

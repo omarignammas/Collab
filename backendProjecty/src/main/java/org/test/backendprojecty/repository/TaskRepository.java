@@ -17,6 +17,16 @@ import java.util.Optional;
 public interface TaskRepository extends JpaRepository<Task, Long> {
     Page<Task> findByUserId(Long userId, Pageable pageable);
     Page<Task> findByUserIdAndCourseId(Long userId, Long courseId, Pageable pageable);
+
+    @Query("""
+            SELECT DISTINCT t FROM Task t
+            LEFT JOIN t.course c
+            LEFT JOIN CourseMember m ON m.course = c AND m.status = 'ACTIVE'
+            WHERE t.user.id = :userId
+               OR c.user.id = :userId
+               OR m.user.id = :userId
+            """)
+    Page<Task> findAccessibleTasks(@Param("userId") Long userId, Pageable pageable);
     Optional<Task> findByIdAndUserId(Long id, Long userId);
     long countByCourseIdAndCompleted(Long courseId, boolean completed);
     long countByCourseId(Long courseId);

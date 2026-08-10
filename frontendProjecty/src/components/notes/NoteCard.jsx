@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Trash2, ExternalLink, BookOpen } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,17 +38,17 @@ export const NoteCard = ({ note, onDelete }) => {
   };
 
   return (
-    <Card className="border-border/80 bg-card">
+    <Card className="cursor-pointer border-border/80 bg-card transition-colors hover:border-primary/35" onClick={() => setIsReadOpen(true)}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="min-w-0 flex-1 truncate text-base text-foreground">{note.title}</CardTitle>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive">
+              <Button variant="ghost" size="icon" onClick={(event) => event.stopPropagation()} className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent onClick={(event) => event.stopPropagation()}>
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this note?</AlertDialogTitle>
                 <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
@@ -65,41 +65,9 @@ export const NoteCard = ({ note, onDelete }) => {
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {note.body && <p className="line-clamp-3 text-sm text-muted-foreground">{note.body}</p>}
-
-        {note.savedUrl && (
-          <div className="flex items-center gap-3">
-            {note.body && (
-              <button
-                type="button"
-                onClick={() => setIsReadOpen(true)}
-                className="flex items-center gap-1.5 text-sm text-primary hover:underline"
-              >
-                <BookOpen className="h-3.5 w-3.5" />
-                Read in app
-              </button>
-            )}
-            <a
-              href={note.savedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              View original
-            </a>
-          </div>
-        )}
-
-        {note.tags?.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {note.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="border-border text-muted-foreground">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )}
+        {note.body
+          ? <p className="line-clamp-5 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{note.body}</p>
+          : <p className="text-sm italic text-muted-foreground">Empty note</p>}
       </CardContent>
 
       {note.courseTitle && (
@@ -110,22 +78,14 @@ export const NoteCard = ({ note, onDelete }) => {
         </CardFooter>
       )}
 
-      {note.savedUrl && note.body && (
-        <Dialog open={isReadOpen} onOpenChange={setIsReadOpen}>
-          <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{note.title}</DialogTitle>
-              <DialogDescription>
-                Saved from{' '}
-                <a href={note.savedUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  {note.savedUrl}
-                </a>
-              </DialogDescription>
-            </DialogHeader>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{note.body}</p>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={isReadOpen} onOpenChange={setIsReadOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl" onClick={(event) => event.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>{note.title}</DialogTitle>
+          </DialogHeader>
+          <p className="whitespace-pre-line text-sm leading-7 text-foreground">{note.body || 'This note is empty.'}</p>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

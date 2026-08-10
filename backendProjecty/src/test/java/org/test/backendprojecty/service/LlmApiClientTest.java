@@ -9,10 +9,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.test.backendprojecty.exception.ExternalApiException;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -105,5 +108,23 @@ class LlmApiClientTest {
         assertThrows(ExternalApiException.class,
                 () -> unconfigured.generateFromImage("describe this image", new byte[]{1, 2, 3}, "image/png"));
         verifyNoInteractions(restTemplate);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void synthesizeSpeech_ReturnsAudio_AndRemovesSourceMarkers() {
+        byte[] expectedAudio = new byte[]{4, 2};
+        when(restTemplate.postForEntity(eq(BASE_URL + "/audio/speech"), any(HttpEntity.class), eq(byte[].class)))
+                .thenReturn(ResponseEntity.ok(expectedAudio));
+
+        byte[] result = client.synthesizeSpeech("Your React task is due today [S3].");
+
+        assertArrayEquals(expectedAudio, result);
+        var entityCaptor = org.mockito.ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForEntity(eq(BASE_URL + "/audio/speech"), entityCaptor.capture(), eq(byte[].class));
+        Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
+        assertEquals("canopylabs/orpheus-v1-english", body.get("model"));
+        assertEquals("hannah", body.get("voice"));
+        assertEquals("[warm] Your React task is due today .", body.get("input"));
     }
 }

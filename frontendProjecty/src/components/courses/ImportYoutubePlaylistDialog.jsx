@@ -93,7 +93,7 @@ export const ImportYoutubePlaylistDialog = ({ open, onOpenChange, onCourseCreate
         <DialogHeader>
           <DialogTitle>Import YouTube Playlist</DialogTitle>
           <DialogDescription>
-            Turn a public YouTube playlist into a course — each video becomes a task
+            Turn a public YouTube playlist into a project, with one task per video.
           </DialogDescription>
         </DialogHeader>
 

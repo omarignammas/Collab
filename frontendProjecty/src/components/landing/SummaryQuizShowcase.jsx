@@ -51,7 +51,7 @@ export const SummaryQuizShowcase = () => {
       <div className="h-[300px] rounded-xl border border-border/80 bg-card p-5">
         <p className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
           <Sparkles className={`h-4 w-4 text-primary ${extracting ? 'animate-pulse' : ''}`} />
-          AI course summary
+          AI project summary
         </p>
 
         <div className="flex items-center gap-2.5 rounded-md border border-border/60 bg-background p-2.5 text-xs">

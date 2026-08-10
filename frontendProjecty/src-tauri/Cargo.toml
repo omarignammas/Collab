@@ -27,6 +27,8 @@ tauri-plugin-notification = "2"
 tauri-plugin-global-shortcut = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+base64 = "0.22"
 window-vibrancy = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSRunningApplication", "NSWorkspace"] }
+objc2-app-kit = { version = "0.3", features = ["NSBitmapImageRep", "NSImage", "NSRunningApplication", "NSWorkspace"] }
+objc2-foundation = { version = "0.3", features = ["NSData", "NSDictionary", "NSObject"] }
 raw-window-handle = "0.6"

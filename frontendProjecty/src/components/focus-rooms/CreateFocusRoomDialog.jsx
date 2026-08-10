@@ -157,13 +157,13 @@ export const CreateFocusRoomDialog = ({ open, onOpenChange, onRoomCreated }) => 
               </div>
 
               <div className="space-y-2">
-                <Label>Course (optional)</Label>
+                <Label>Project (optional)</Label>
                 <Select value={courseId} onValueChange={setCourseId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="No course tag" />
+                    <SelectValue placeholder="No project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No course tag</SelectItem>
+                    <SelectItem value="none">No project</SelectItem>
                     {courses.map((course) => (
                       <SelectItem key={course.id} value={String(course.id)}>{course.title}</SelectItem>
                     ))}

@@ -103,7 +103,7 @@ export const CourseDetailPage = () => {
       for (const userId of inviteUserIds) {
         await courseMemberService.inviteMember(courseId, userId);
       }
-      toast({ title: 'Invites sent', description: `Invited ${inviteUserIds.length} friend${inviteUserIds.length === 1 ? '' : 's'} to this course.` });
+      toast({ title: 'Invites sent', description: `Invited ${inviteUserIds.length} friend${inviteUserIds.length === 1 ? '' : 's'} to this project.` });
       setInviteUserIds([]);
       setIsInviteOpen(false);
       fetchCourseData();
@@ -121,7 +121,7 @@ export const CourseDetailPage = () => {
   const handleAcceptInvite = async () => {
     try {
       await courseMemberService.acceptInvite(courseId);
-      toast({ title: 'Joined course', description: `You're now part of "${course.title}".` });
+      toast({ title: 'Joined project', description: `You're now part of "${course.title}".` });
       fetchCourseData();
     } catch (error) {
       toast({
@@ -148,7 +148,7 @@ export const CourseDetailPage = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-        Loading course...
+        Loading project...
       </div>
     );
   }
@@ -156,7 +156,7 @@ export const CourseDetailPage = () => {
   if (!course) {
     return (
       <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-        Course not found
+        Project not found
       </div>
     );
   }
@@ -169,17 +169,17 @@ export const CourseDetailPage = () => {
     <div className="accent-purple w-full px-4 py-8">
       <Button
         variant="ghost"
-        onClick={() => navigate('/courses')}
+        onClick={() => navigate('/projects')}
         className="mb-6 text-left text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Courses
+        Back to projects
       </Button>
 
       {isPendingInvite && (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/5 p-4">
           <p className="text-sm text-foreground">
-            <span className="font-medium">{course.ownerName}</span> invited you to join this course.
+            <span className="font-medium">{course.ownerName}</span> invited you to join this project.
           </p>
           <Button size="sm" onClick={handleAcceptInvite}>
             <Check className="mr-2 h-3.5 w-3.5" />
@@ -230,7 +230,7 @@ export const CourseDetailPage = () => {
 
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Callout icon={Gauge}>
-          Course progress is computed from completed vs. total tasks in this course — it updates itself as you check things off, nothing to set manually.
+          Project progress is computed from completed vs. total tasks in this project. It updates itself as you check things off, with nothing to set manually.
         </Callout>
 
         {course.instructorName ? (
@@ -246,7 +246,7 @@ export const CourseDetailPage = () => {
             </div>
           </div>
         ) : (
-          <Callout icon={User}>No instructor on file for this course yet — add one from the edit button above.</Callout>
+          <Callout icon={User}>No owner or lead is listed for this project yet. Add one from the edit button above.</Callout>
         )}
       </div>
 
@@ -257,7 +257,7 @@ export const CourseDetailPage = () => {
               <>
                 <CircularProgress percentage={Math.round(progress.progressPercentage)} size={100} strokeWidth={9} color="blue" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">course progress</p>
+                  <p className="text-sm font-medium text-foreground">project progress</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {progress.completedTasks} of {progress.totalTasks} tasks completed
                   </p>
@@ -301,7 +301,7 @@ export const CourseDetailPage = () => {
                       size="icon"
                       className="h-6 w-6 text-muted-foreground hover:text-destructive"
                       onClick={() => handleRemoveMember(m.userId)}
-                      title="Remove from course"
+                      title="Remove from project"
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
@@ -367,7 +367,7 @@ export const CourseDetailPage = () => {
           <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Invite friends to this course</DialogTitle>
+                <DialogTitle>Invite friends to this project</DialogTitle>
                 <DialogDescription>They'll be able to see the team's tasks and any you assign to them.</DialogDescription>
               </DialogHeader>
               <FriendPicker selected={inviteUserIds} onChange={setInviteUserIds} excludeUserIds={involvedUserIds} />

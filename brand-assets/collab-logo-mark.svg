@@ -1,0 +1,15 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="112" y="112" width="800" height="800" rx="178" fill="#E87345"/>
+  <rect x="112" y="112" width="800" height="800" rx="178" fill="url(#brandGlow)" opacity="0.62"/>
+  <path d="M335 388C335 357.072 360.072 332 391 332H481.694C500.271 332 517.635 341.207 528.053 356.588L552.286 392.412C562.704 407.793 580.068 417 598.645 417H655C685.928 417 711 442.072 711 473V632C711 662.928 685.928 688 655 688H391C360.072 688 335 662.928 335 632V388Z" stroke="white" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="438" y="505" width="34" height="101" rx="17" fill="white"/>
+  <rect x="505" y="505" width="34" height="67" rx="17" fill="white"/>
+  <rect x="572" y="505" width="34" height="134" rx="17" fill="white"/>
+  <defs>
+    <radialGradient id="brandGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(302 230) rotate(45) scale(840)">
+      <stop stop-color="#FFB68E"/>
+      <stop offset="0.52" stop-color="#E87345"/>
+      <stop offset="1" stop-color="#C95B32"/>
+    </radialGradient>
+  </defs>
+</svg>

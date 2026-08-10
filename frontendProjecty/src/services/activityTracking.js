@@ -2,8 +2,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '@tauri-apps/api/core';
 
 const STORAGE_KEY = 'collab.desktop-activity.v1';
+const ICON_CACHE_KEY = 'collab.desktop-app-icons.v1';
 const SETTINGS_KEY = 'collab.desktop-activity.enabled';
 const MAX_DAYS = 90;
+const MAX_CACHED_ICONS = 16;
+const MAX_ICON_DATA_URL_LENGTH = 750_000;
 
 const APP_RULES = [
   { category: 'Deep work', names: ['Visual Studio Code', 'Cursor', 'Xcode', 'IntelliJ IDEA', 'PyCharm', 'Terminal', 'iTerm'], bundles: ['com.microsoft.VSCode', 'com.todesktop.230313mzl4w4u92', 'com.apple.dt.Xcode', 'com.googlecode.iterm2'] },
@@ -60,8 +63,44 @@ const writeActivityEntries = (entries) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 };
 
-export const recordActivity = (app, seconds, now = new Date()) => {
+const appIdentity = (app) => app?.bundleId || app?.name;
+
+export const readActivityIconCache = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ICON_CACHE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const cacheAppIcon = (app) => {
+  const key = appIdentity(app);
+  if (
+    !key
+    || !app.iconDataUrl?.startsWith('data:image/')
+    || app.iconDataUrl.length > MAX_ICON_DATA_URL_LENGTH
+  ) return;
+
+  const cache = readActivityIconCache();
+  if (cache[key] === app.iconDataUrl) return;
+  cache[key] = app.iconDataUrl;
+  const keys = Object.keys(cache);
+  while (keys.length > MAX_CACHED_ICONS) delete cache[keys.shift()];
+  while (keys.length) {
+    try {
+      localStorage.setItem(ICON_CACHE_KEY, JSON.stringify(cache));
+      return;
+    } catch {
+      delete cache[keys.shift()];
+    }
+  }
+};
+
+export const recordActivity = (app, seconds, now = new Date(), focusContext = null) => {
   if (!app?.name || !seconds || app.bundleId === 'com.collab.desktop') return readActivityEntries();
+
+  cacheAppIcon(app);
 
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - MAX_DAYS);
@@ -76,10 +115,17 @@ export const recordActivity = (app, seconds, now = new Date()) => {
     bundleId: app.bundleId || null,
     category: app.category || 'Other',
     seconds: Math.max(0, Math.round(seconds)),
+    focusSeconds: focusContext?.active ? Math.max(0, Math.round(seconds)) : 0,
   };
 
   if (index >= 0) {
-    entries[index] = { ...entries[index], seconds: entries[index].seconds + next.seconds, category: next.category, name: next.name };
+    entries[index] = {
+      ...entries[index],
+      seconds: entries[index].seconds + next.seconds,
+      focusSeconds: (entries[index].focusSeconds || 0) + next.focusSeconds,
+      category: next.category,
+      name: next.name,
+    };
   } else {
     entries.push(next);
   }
@@ -89,9 +135,14 @@ export const recordActivity = (app, seconds, now = new Date()) => {
 
 export const clearActivityEntries = () => {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(ICON_CACHE_KEY);
 };
 
-export const buildActivitySummary = (entries = readActivityEntries(), now = new Date()) => {
+export const buildActivitySummary = (
+  entries = readActivityEntries(),
+  now = new Date(),
+  iconCache = readActivityIconCache()
+) => {
   const today = formatDay(now);
   const dayAtOffset = (offset) => {
     const date = new Date(now);
@@ -107,11 +158,20 @@ export const buildActivitySummary = (entries = readActivityEntries(), now = new 
     (entry) => entry.day >= previousWeekStart && entry.day <= previousWeekEnd
   );
   const totalSeconds = todayEntries.reduce((sum, entry) => sum + entry.seconds, 0);
+  const focusedAppSeconds = todayEntries.reduce((sum, entry) => sum + (entry.focusSeconds || 0), 0);
   const deepWorkSeconds = todayEntries
     .filter((entry) => ['Deep work', 'Writing', 'Design'].includes(entry.category))
     .reduce((sum, entry) => sum + entry.seconds, 0);
   const appMap = new Map();
+  const todayAppMap = new Map();
   const categoryMap = new Map();
+  for (const entry of todayEntries) {
+    const appKey = entry.bundleId || entry.name;
+    const app = todayAppMap.get(appKey) || { ...entry, key: appKey, seconds: 0, focusSeconds: 0 };
+    app.seconds += entry.seconds;
+    app.focusSeconds += entry.focusSeconds || 0;
+    todayAppMap.set(appKey, app);
+  }
   for (const entry of weekEntries) {
     const appKey = entry.bundleId || entry.name;
     const app = appMap.get(appKey) || { ...entry, key: appKey, seconds: 0 };
@@ -129,7 +189,27 @@ export const buildActivitySummary = (entries = readActivityEntries(), now = new 
     .slice(0, 5)
     .map((app) => ({
       ...app,
+      iconDataUrl: iconCache[app.key] || null,
       percentage: weeklySeconds ? Math.round((app.seconds / weeklySeconds) * 100) : 0,
+    }));
+  const todayTopApps = [...todayAppMap.values()]
+    .sort((a, b) => b.seconds - a.seconds)
+    .slice(0, 3)
+    .map((app) => ({
+      ...app,
+      iconDataUrl: iconCache[app.key] || null,
+      percentage: totalSeconds ? Math.round((app.seconds / totalSeconds) * 100) : 0,
+    }));
+  const todayFocusApps = [...todayAppMap.values()]
+    .filter((app) => (app.focusSeconds || 0) > 0)
+    .sort((a, b) => (b.focusSeconds || 0) - (a.focusSeconds || 0))
+    .slice(0, 3)
+    .map((app) => ({
+      ...app,
+      iconDataUrl: iconCache[app.key] || null,
+      focusPercentage: focusedAppSeconds
+        ? Math.round(((app.focusSeconds || 0) / focusedAppSeconds) * 100)
+        : 0,
     }));
   const categories = [...categoryMap.entries()]
     .map(([name, seconds]) => ({
@@ -158,6 +238,7 @@ export const buildActivitySummary = (entries = readActivityEntries(), now = new 
 
   return {
     todaySeconds: totalSeconds,
+    focusedAppSeconds,
     deepWorkSeconds,
     focusRate: totalSeconds ? Math.round((deepWorkSeconds / totalSeconds) * 100) : 0,
     intentionalWeekRate: weeklySeconds ? Math.round((intentionalWeekSeconds / weeklySeconds) * 100) : 0,
@@ -169,6 +250,8 @@ export const buildActivitySummary = (entries = readActivityEntries(), now = new 
     averageActiveDaySeconds: activeWeekDays.length ? Math.round(weeklySeconds / activeWeekDays.length) : 0,
     strongestDay,
     topApps,
+    todayTopApps,
+    todayFocusApps,
     categories,
     days,
     heatmapDays,

@@ -18,7 +18,7 @@ export const CourseBackpack = ({ tasks, onTaskUpdated, onTaskDeleted }) => {
   if (tasks.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border py-12 text-center">
-        <p className="text-muted-foreground">No tasks in this course yet.</p>
+        <p className="text-muted-foreground">No tasks in this project yet.</p>
       </div>
     );
   }

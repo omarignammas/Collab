@@ -147,7 +147,7 @@ export const AiTaskPlanDialog = ({ courseId, open, onOpenChange, onPlanApplied }
         title, description, estimatedMinutes: estimatedMinutes || null, dueDate: dueDate || null, priority, type,
       }));
       await taskPlanService.confirmPlan(courseId, planId, tasks);
-      toast({ title: 'Tasks created', description: `${selected.length} task${selected.length === 1 ? '' : 's'} added to this course.` });
+      toast({ title: 'Tasks created', description: `${selected.length} task${selected.length === 1 ? '' : 's'} added to this project.` });
       onOpenChange(false);
       onPlanApplied?.();
     } catch (error) {

@@ -180,17 +180,17 @@ export const CoursesPage = () => {
     <div className="accent-purple w-full px-4 py-10">
       <PageHero
         icon={GraduationCap}
-        title="My Projects Portfolio"
-        subtitle="Manage your courses and tasks"
+        title="Projects"
+        subtitle="Keep every project, task, and teammate moving together."
         action={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+          <div className="flex w-full flex-col gap-2 min-[370px]:flex-row sm:w-auto">
+            <Button className="w-full min-[370px]:w-auto" variant="outline" onClick={() => setIsImportDialogOpen(true)}>
               <Youtube className="h-4 w-4 mr-2" />
               Import YouTube Playlist
             </Button>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button className="w-full min-[370px]:w-auto" onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              New Course
+              New project
             </Button>
           </div>
         }
@@ -236,7 +236,7 @@ export const CoursesPage = () => {
               color="blue"
             />
             <StatCard
-              title="Total Courses"
+              title="Total projects"
               subtitle={`${stats.completedCourses} completed`}
               percentage={stats.courseCompletionRate || 0}
               color="purple"
@@ -248,7 +248,7 @@ export const CoursesPage = () => {
               color="green"
             />
             <StatCard
-              title="Courses Achieved"
+              title="Projects achieved"
               subtitle={`${stats.courseCompletionRate || 0}% completion rate`}
               percentage={stats.courseCompletionRate || 0}
               color="orange"
@@ -264,7 +264,7 @@ export const CoursesPage = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             <Input
-              placeholder="Search courses..."
+              placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -278,7 +278,7 @@ export const CoursesPage = () => {
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Courses</SelectItem>
+              <SelectItem value="all">All projects</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
@@ -288,7 +288,7 @@ export const CoursesPage = () => {
         {/* Results count */}
         {(searchTerm || statusFilter !== 'all') && (
           <p className="mt-3 text-sm text-muted-foreground">
-            Found {filteredCourses.length} course(s)
+            Found {filteredCourses.length} project(s)
             {statusFilter !== 'all' && ` • Filter: ${statusFilter === 'completed' ? 'Completed' : 'In Progress'}`}
           </p>
         )}
@@ -305,7 +305,7 @@ export const CoursesPage = () => {
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
           {searchTerm || statusFilter !== 'all' ? (
             <>
-              <h3 className="mb-2 text-lg font-semibold text-foreground">No courses found</h3>
+              <h3 className="mb-2 text-lg font-semibold text-foreground">No projects found</h3>
               <p className="mb-4 text-muted-foreground">
                 Try adjusting your search or filters
               </p>
@@ -324,13 +324,13 @@ export const CoursesPage = () => {
             </>
           ) : (
             <>
-              <h3 className="mb-2 text-lg font-semibold text-foreground">No courses yet</h3>
+              <h3 className="mb-2 text-lg font-semibold text-foreground">No projects yet</h3>
               <p className="mb-4 text-muted-foreground">
-                Add your first course to start tracking tasks 🚀
+                Add your first project to start organizing work.
               </p>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Course
+                Create project
               </Button>
             </>
           )}

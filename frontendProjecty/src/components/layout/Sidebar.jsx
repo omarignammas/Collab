@@ -38,7 +38,7 @@ const NAV_SECTIONS = [
   {
     label: 'Study',
     items: [
-      { to: '/courses', label: 'Portfolio', icon: LayoutGrid },
+      { to: '/projects', label: 'Projects', icon: LayoutGrid },
       { to: '/tasks', label: 'Tasks', icon: ListTodo },
       { to: '/calendar', label: 'Calendar', icon: CalendarDays },
       { to: '/notes', label: 'Notes', icon: NotebookText },

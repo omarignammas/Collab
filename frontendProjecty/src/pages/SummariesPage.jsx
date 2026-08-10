@@ -62,7 +62,7 @@ export const SummariesPage = () => {
       <PageHero
         icon={Sparkles}
         title="Summaries"
-        subtitle="Upload course material and let AI turn it into a study summary and quizzes."
+        subtitle="Turn project material into clear summaries and useful follow-up work."
         action={
           <Button onClick={() => setIsUploadOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -126,7 +126,7 @@ export const SummariesPage = () => {
                   </div>
                   <p className="truncate text-sm font-medium text-foreground">{summary.title}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {summary.courseTitle || (summary.isOwner ? 'No course tag' : `by ${summary.ownerName}`)}
+                    {summary.courseTitle || (summary.isOwner ? 'No project' : `by ${summary.ownerName}`)}
                   </p>
                 </CardContent>
               </Card>

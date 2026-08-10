@@ -10,21 +10,38 @@ use tauri::{
 struct FrontmostApp {
   name: String,
   bundle_id: Option<String>,
+  icon_data_url: Option<String>,
 }
 
 // This intentionally exposes only the frontmost application's public name and
-// bundle identifier. It cannot inspect window titles, page URLs, documents,
-// keystrokes, or message contents.
+// bundle identifier, and public application icon. It cannot inspect window
+// titles, page URLs, documents, keystrokes, or message contents.
 #[tauri::command]
 fn frontmost_app() -> Option<FrontmostApp> {
   #[cfg(target_os = "macos")]
   {
-    use objc2_app_kit::NSWorkspace;
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use objc2_app_kit::{NSBitmapImageFileType, NSBitmapImageRep, NSWorkspace};
+    use objc2_foundation::NSDictionary;
 
     let app = NSWorkspace::sharedWorkspace().frontmostApplication()?;
     let name = app.localizedName()?.to_string();
     let bundle_id = app.bundleIdentifier().map(|value| value.to_string());
-    return Some(FrontmostApp { name, bundle_id });
+    let icon_data_url = app.icon().and_then(|icon| {
+      let tiff = icon.TIFFRepresentation()?;
+      let bitmap = NSBitmapImageRep::imageRepWithData(&tiff)?;
+      let properties = NSDictionary::new();
+      let png = unsafe {
+        bitmap.representationUsingType_properties(NSBitmapImageFileType::PNG, &properties)
+      }?;
+      Some(format!("data:image/png;base64,{}", STANDARD.encode(png.to_vec())))
+    });
+
+    return Some(FrontmostApp {
+      name,
+      bundle_id,
+      icon_data_url,
+    });
   }
 
   #[cfg(not(target_os = "macos"))]

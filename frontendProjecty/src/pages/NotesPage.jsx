@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, NotebookText, Link2 } from 'lucide-react';
+import { Plus, NotebookText } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import NoteCard from '../components/notes/NoteCard';
@@ -13,8 +13,7 @@ export const NotesPage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [courseFilter, setCourseFilter] = useState('all');
-  const [tagFilter, setTagFilter] = useState('all');
+  const [projectFilter, setProjectFilter] = useState('all');
 
   const fetchData = async () => {
     setLoading(true);
@@ -36,22 +35,12 @@ export const NotesPage = () => {
     fetchData();
   }, []);
 
-  const allTags = useMemo(() => {
-    const tags = new Set();
-    notes.forEach((n) => n.tags?.forEach((t) => tags.add(t)));
-    return Array.from(tags);
-  }, [notes]);
-
   const filteredNotes = useMemo(() => {
     return notes.filter((note) => {
-      if (courseFilter !== 'all' && String(note.courseId) !== courseFilter) return false;
-      if (tagFilter !== 'all' && !note.tags?.includes(tagFilter)) return false;
+      if (projectFilter !== 'all' && String(note.courseId) !== projectFilter) return false;
       return true;
     });
-  }, [notes, courseFilter, tagFilter]);
-
-  const regularNotes = filteredNotes.filter((n) => !n.savedUrl);
-  const savedArticles = filteredNotes.filter((n) => n.savedUrl);
+  }, [notes, projectFilter]);
 
   const handleNoteCreated = () => {
     fetchData();
@@ -69,35 +58,24 @@ export const NotesPage = () => {
         action={
           <Button onClick={() => setIsCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            New Note
+            New note
           </Button>
         }
       />
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row">
-        <Select value={courseFilter} onValueChange={setCourseFilter}>
+        <Select value={projectFilter} onValueChange={setProjectFilter}>
           <SelectTrigger className="sm:w-[200px]">
-            <SelectValue placeholder="Course" />
+            <SelectValue placeholder="Project" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All courses</SelectItem>
+            <SelectItem value="all">All projects</SelectItem>
             {courses.map((course) => (
               <SelectItem key={course.id} value={String(course.id)}>{course.title}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Select value={tagFilter} onValueChange={setTagFilter}>
-          <SelectTrigger className="sm:w-[160px]">
-            <SelectValue placeholder="Tag" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All tags</SelectItem>
-            {allTags.map((tag) => (
-              <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {loading ? (
@@ -116,34 +94,10 @@ export const NotesPage = () => {
           </Button>
         </div>
       ) : (
-        <div className="space-y-10">
-          {regularNotes.length > 0 && (
-            <section>
-              <h2 className="section-header mb-3">
-                <NotebookText className="h-3.5 w-3.5" />
-                notes ({regularNotes.length})
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {regularNotes.map((note) => (
-                  <NoteCard key={note.id} note={note} onDelete={handleNoteDeleted} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {savedArticles.length > 0 && (
-            <section>
-              <h2 className="section-header mb-3">
-                <Link2 className="h-3.5 w-3.5" />
-                saved articles ({savedArticles.length})
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {savedArticles.map((note) => (
-                  <NoteCard key={note.id} note={note} onDelete={handleNoteDeleted} />
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredNotes.map((note) => (
+            <NoteCard key={note.id} note={note} onDelete={handleNoteDeleted} />
+          ))}
         </div>
       )}
 

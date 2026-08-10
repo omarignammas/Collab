@@ -7,14 +7,14 @@ const SECTIONS = [
     body: [
       `Account information: your name, email address, and password (stored as a salted hash — we never store or can retrieve your plain-text password).`,
       `Profile information: an avatar image, if you choose to upload one.`,
-      `Content you create: courses, terms, tasks, notes (including text fetched from article URLs you save), Focus Room sessions and chat messages, and friend connections.`,
+      `Content you create: projects, terms, tasks, notes, Focus Room sessions and chat messages, and friend connections.`,
       `Usage and technical information: standard web server logs (IP address, browser type, timestamps) generated automatically by visiting the Service, and a JWT authentication token plus your theme preference stored in your browser's local storage.`,
     ],
   },
   {
     title: '2. How we use it',
     body: [
-      `To provide the Service: authenticate you, sync your courses/tasks/notes, run real-time Focus Room sessions over WebSockets, and deliver in-app notifications (friend requests, room invites, streaks, reminders).`,
+      `To provide the Service: authenticate you, sync your projects, tasks, and notes, run real-time Focus Room sessions over WebSockets, and deliver in-app notifications (friend requests, room invites, streaks, reminders).`,
       `To maintain and secure the Service: detect abuse, debug issues, and enforce our Terms of Use.`,
       `We do not use your content or account information for advertising, and we do not sell your personal information.`,
     ],

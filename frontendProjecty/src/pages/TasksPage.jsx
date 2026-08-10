@@ -54,7 +54,7 @@ export const TasksPage = () => {
       <PageHero
         icon={ListTodo}
         title="Tasks"
-        subtitle="Every task, across every course."
+        subtitle="Every task, across every project."
         action={
           <div className="flex gap-1 rounded-lg border border-border/80 bg-card p-1">
             <button
@@ -84,10 +84,10 @@ export const TasksPage = () => {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row">
         <Select value={courseFilter} onValueChange={setCourseFilter}>
           <SelectTrigger className="sm:w-[200px]">
-            <SelectValue placeholder="Course" />
+            <SelectValue placeholder="Project" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All courses</SelectItem>
+            <SelectItem value="all">All projects</SelectItem>
             <SelectItem value="personal">Personal only</SelectItem>
             {courses.map((course) => (
               <SelectItem key={course.id} value={String(course.id)}>{course.title}</SelectItem>

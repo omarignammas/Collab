@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { isTauri } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { Window, getCurrentWindow } from '@tauri-apps/api/window';
@@ -24,6 +24,11 @@ const DesktopEntryPage = () => {
   return <Navigate to={isAuthenticated ? '/today' : '/login'} replace />;
 };
 const EntryPage = isTauri() ? DesktopEntryPage : LandingPage;
+
+const LegacyProjectRedirect = () => {
+  const { courseId } = useParams();
+  return <Navigate to={`/projects/${courseId}`} replace />;
+};
 
 // Landing stays eager — it's the entry point Lighthouse/SEO cares about, and lazy-loading
 // it would just add a chunk-fetch delay to the page that's already loading first. Everything
@@ -157,8 +162,10 @@ function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/today" element={<TodayPage />} />
               <Route path="/tasks" element={<TasksPage />} />
-              <Route path="/courses" element={<CoursesPage />} />
-              <Route path="/courses/:courseId" element={<CourseDetailPage />} />
+              <Route path="/projects" element={<CoursesPage />} />
+              <Route path="/projects/:courseId" element={<CourseDetailPage />} />
+              <Route path="/courses" element={<Navigate to="/projects" replace />} />
+              <Route path="/courses/:courseId" element={<LegacyProjectRedirect />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/focus-rooms" element={<FocusRoomsPage />} />
               <Route path="/focus-rooms/:roomCode" element={<FocusRoomPage />} />

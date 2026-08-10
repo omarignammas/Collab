@@ -37,12 +37,12 @@ export const ProfilePage = () => {
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-10">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col items-start justify-between gap-4 min-[360px]:flex-row min-[360px]:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Profile</h1>
           <p className="mt-1 text-muted-foreground">Your account at a glance.</p>
         </div>
-        <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+        <Button className="w-full min-[360px]:w-auto" variant="outline" onClick={() => setIsEditOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" />
           Edit Profile
         </Button>
@@ -58,21 +58,21 @@ export const ProfilePage = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 min-[300px]:grid-cols-3 sm:gap-4">
         <Card className="border-border/80 bg-card">
-          <CardContent className="p-5 text-center">
+          <CardContent className="px-2 py-5 text-center sm:p-5">
             <p className="font-numeric text-2xl font-bold text-foreground">{loading ? '—' : counts.courses}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Courses</p>
+            <p className="mt-1 text-xs text-muted-foreground">Projects</p>
           </CardContent>
         </Card>
         <Card className="border-border/80 bg-card">
-          <CardContent className="p-5 text-center">
+          <CardContent className="px-2 py-5 text-center sm:p-5">
             <p className="font-numeric text-2xl font-bold text-foreground">{loading ? '—' : counts.completedTasks}</p>
             <p className="mt-1 text-xs text-muted-foreground">Tasks completed</p>
           </CardContent>
         </Card>
         <Card className="border-border/80 bg-card">
-          <CardContent className="p-5 text-center">
+          <CardContent className="px-2 py-5 text-center sm:p-5">
             <p className="font-numeric text-2xl font-bold text-foreground">{loading ? '—' : counts.totalTasks}</p>
             <p className="mt-1 text-xs text-muted-foreground">Total tasks</p>
           </CardContent>

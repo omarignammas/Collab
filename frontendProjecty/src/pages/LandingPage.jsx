@@ -99,7 +99,7 @@ const FEATURES = [
   {
     icon: ListTodo,
     title: 'Tasks that track themselves',
-    description: 'Check something off and its status, board column, and course progress all update on their own — nothing to sync by hand.',
+    description: 'Check something off and its status, board column, and project progress all update on their own — nothing to sync by hand.',
     Anim: TasksBoardAnimation,
   },
   {
@@ -131,7 +131,7 @@ const STEPS = [
   {
     number: '03',
     title: 'Review, then make it real',
-    description: 'Edit or remove anything before confirming. Approved tasks land straight in your course, calendar, and team.',
+    description: 'Edit or remove anything before confirming. Approved tasks land straight in your project, calendar, and team.',
   },
 ];
 
@@ -211,7 +211,7 @@ export const LandingPage = () => {
             <ModeToggle />
             {user ? (
               <Button asChild size="sm" variant="outline" className="border-primary/60">
-                <Link to="/courses">
+                <Link to="/projects">
                   Enter App
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -258,7 +258,7 @@ export const LandingPage = () => {
             <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
               {user ? (
                 <Button asChild size="sm" variant="outline" className="border-primary/60">
-                  <Link to="/courses" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Link to="/projects" onClick={() => setIsMobileMenuOpen(false)}>
                     Enter App
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
@@ -322,8 +322,8 @@ export const LandingPage = () => {
 
             <div className="animate-in fade-in slide-in-from-bottom-3 mt-8 flex flex-col items-center justify-center gap-3 duration-700 [animation-delay:400ms] [animation-fill-mode:backwards] sm:flex-row">
               <Button asChild size="lg" className="w-full transition-transform hover:-translate-y-0.5 sm:w-auto">
-                <Link to={user ? '/courses' : '/register'}>
-                  {user ? 'Go to Courses' : 'Get Started Free'}
+                <Link to={user ? '/projects' : '/register'}>
+                  {user ? 'Go to projects' : 'Get Started Free'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -385,7 +385,7 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      {/* AI: sessions and course material, both turned into something useful */}
+      {/* AI: sessions and project material, both turned into something useful */}
       <section id="ai-reports" className="border-t border-border/80 py-20">
         <div className="container mx-auto px-4">
           <Reveal className="mb-10 text-center">
@@ -394,7 +394,7 @@ export const LandingPage = () => {
               Your session, turned into <span className="text-primary"><RotatingWord words={AI_OUTPUT_WORDS} />.</span>
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Chat, take notes, focus together, or upload a course file — AI turns any of it into a clean report,
+              Chat, take notes, focus together, or upload a project file — AI turns any of it into a clean report,
               summary, diagram, or quiz.
             </p>
           </Reveal>
@@ -408,7 +408,7 @@ export const LandingPage = () => {
             </Reveal>
             <Reveal delay={200}>
               <p className="mb-4 text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground lg:text-left">
-                Course Summaries
+                Project summaries
               </p>
               <SummaryQuizShowcase />
             </Reveal>

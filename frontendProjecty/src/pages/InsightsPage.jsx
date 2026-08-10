@@ -85,10 +85,101 @@ const SummaryMetric = ({ icon, label, value, detail, accent }) => (
   </div>
 );
 
-const SignalBar = ({ label, value, color }) => (
-  <div>
-    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">{label}</span><span className="font-numeric font-semibold text-foreground">{value}%</span></div>
-    <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} /></div>
+const clampScore = (value) => Math.max(0, Math.min(100, Math.round(value || 0)));
+
+const getPerformanceSignals = (summary, communication) => [
+  { label: 'Focus', value: clampScore(summary.intentionalWeekRate), detail: 'Intentional time' },
+  { label: 'Consistency', value: clampScore(summary.consistencyRate), detail: 'Active-day rhythm' },
+  { label: 'Endurance', value: clampScore((summary.averageActiveDaySeconds / (4 * 60 * 60)) * 100), detail: 'Relative to a 4h day' },
+  {
+    label: 'Momentum',
+    value: summary.weeklyChangePercent === null
+      ? (summary.weeklySeconds ? 50 : 0)
+      : clampScore(50 + (summary.weeklyChangePercent / 2)),
+    detail: 'Week-over-week pace',
+  },
+  { label: 'Balance', value: summary.topApps[0] ? clampScore(100 - summary.topApps[0].percentage) : 0, detail: 'Attention spread' },
+  { label: 'Collaboration', value: clampScore(communication), detail: 'Communication share' },
+];
+
+const PerformanceRadar = ({ signals }) => {
+  const center = 165;
+  const radius = 101;
+  const labelRadius = 139;
+  const pointAt = (index, value = 100, distance = radius) => {
+    const angle = ((index * 360) / signals.length - 90) * (Math.PI / 180);
+    const scaledDistance = distance * (value / 100);
+    return {
+      x: center + (Math.cos(angle) * scaledDistance),
+      y: center + (Math.sin(angle) * scaledDistance),
+    };
+  };
+  const polygonPoints = (level) => signals
+    .map((_, index) => {
+      const point = pointAt(index, level);
+      return `${point.x},${point.y}`;
+    })
+    .join(' ');
+  const signalPoints = signals
+    .map((signal, index) => {
+      const point = pointAt(index, signal.value);
+      return `${point.x},${point.y}`;
+    })
+    .join(' ');
+
+  return (
+    <svg
+      className="mx-auto h-auto w-full max-w-[350px] overflow-visible"
+      viewBox="0 0 330 330"
+      role="img"
+      aria-label={`Seven-day performance profile: ${signals.map((signal) => `${signal.label} ${signal.value}`).join(', ')}`}
+    >
+      {[25, 50, 75, 100].map((level) => (
+        <polygon key={level} points={polygonPoints(level)} className="fill-transparent stroke-border/80" strokeWidth="1" />
+      ))}
+      {signals.map((signal, index) => {
+        const edge = pointAt(index);
+        const label = pointAt(index, 100, labelRadius);
+        const anchor = label.x < center - 10 ? 'end' : label.x > center + 10 ? 'start' : 'middle';
+        return (
+          <g key={signal.label}>
+            <line x1={center} y1={center} x2={edge.x} y2={edge.y} className="stroke-border/70" strokeWidth="1" />
+            <text x={label.x} y={label.y - 5} textAnchor={anchor} className="fill-muted-foreground text-[10px] font-medium">
+              <tspan x={label.x}>{signal.label}</tspan>
+              <tspan x={label.x} dy="14" className="fill-foreground font-numeric text-[11px] font-semibold">{signal.value}</tspan>
+            </text>
+          </g>
+        );
+      })}
+      <polygon points={signalPoints} className="fill-primary/15 stroke-primary" strokeWidth="2.5" strokeLinejoin="round" />
+      {signals.map((signal, index) => {
+        const point = pointAt(index, signal.value);
+        return <circle key={signal.label} cx={point.x} cy={point.y} r="3.5" className="fill-card stroke-primary" strokeWidth="2.5" />;
+      })}
+      <circle cx={center} cy={center} r="3" className="fill-primary" />
+    </svg>
+  );
+};
+
+const AppLogo = ({ app, large = false }) => (
+  <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-muted shadow-ios-sm ${large ? 'h-16 w-16' : 'h-9 w-9'}`}>
+    {app?.iconDataUrl
+      ? <img src={app.iconDataUrl} alt="" className="h-full w-full object-contain" />
+      : <AppWindow className={`${large ? 'h-7 w-7' : 'h-4 w-4'} text-muted-foreground`} />}
+  </span>
+);
+
+const TopAppRow = ({ app }) => (
+  <div className="grid grid-cols-[36px_minmax(0,1fr)_minmax(72px,130px)_42px] items-center gap-3 py-3">
+    <AppLogo app={app} />
+    <div className="min-w-0">
+      <p className="truncate text-sm font-medium text-foreground">{app.name}</p>
+      <p className="truncate text-[11px] text-muted-foreground">{app.category} · {formatTrackedTime(app.seconds)}</p>
+    </div>
+    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+      <div className={`h-full rounded-full ${CATEGORY_STYLES[app.category] || CATEGORY_STYLES.Other}`} style={{ width: `${app.percentage}%` }} />
+    </div>
+    <span className="text-right font-numeric text-xs font-semibold text-foreground">{app.percentage}%</span>
   </div>
 );
 
@@ -96,7 +187,7 @@ export const InsightsPage = () => {
   const { available, enabled, setTracking, currentApp, summary } = useActivityTracking();
   const topApp = summary.topApps[0];
   const communication = summary.categories.find((category) => category.name === 'Communication')?.percentage || 0;
-  const research = summary.categories.find((category) => category.name === 'Research')?.percentage || 0;
+  const performanceSignals = getPerformanceSignals(summary, communication);
   const change = summary.weeklyChangePercent;
   const strongestDayLabel = summary.strongestDay?.seconds
     ? new Date(`${summary.strongestDay.day}T12:00:00`).toLocaleDateString([], { weekday: 'long' })
@@ -148,14 +239,12 @@ export const InsightsPage = () => {
 
             <Card className="border-border/80 bg-card shadow-ios-sm">
               <CardContent className="p-6">
-                <div className="flex items-start justify-between"><div><p className="section-header">Work profile</p><p className="mt-1 text-xs text-muted-foreground">Current seven-day mix</p></div><Activity className="h-5 w-5 text-[hsl(var(--chart-2))]" /></div>
-                <div className="mt-6 space-y-5">
-                  <SignalBar label="Intentional work" value={summary.intentionalWeekRate} color="bg-primary" />
-                  <SignalBar label="Consistency" value={summary.consistencyRate} color="bg-[hsl(var(--chart-2))]" />
-                  <SignalBar label="Communication" value={communication} color="bg-[hsl(var(--chart-3))]" />
-                  <SignalBar label="Research" value={research} color="bg-[hsl(var(--chart-4))]" />
+                <div className="flex items-start justify-between"><div><p className="section-header">Performance profile</p><p className="mt-1 text-xs text-muted-foreground">Seven-day behavior signals</p></div><Activity className="h-5 w-5 text-primary" /></div>
+                <div className="mt-1">
+                  <PerformanceRadar signals={performanceSignals} />
                 </div>
-                <div className="mt-6 border-t border-border/70 pt-4"><p className="text-xs font-semibold uppercase text-muted-foreground">Collab insight</p><p className="mt-2 text-sm leading-relaxed text-foreground">{insight}</p></div>
+                <p className="-mt-2 text-center text-[10px] text-muted-foreground">Relative signals from local activity, not a productivity grade.</p>
+                <div className="mt-4 border-t border-border/70 pt-4"><p className="text-xs font-semibold uppercase text-muted-foreground">Collab insight</p><p className="mt-2 text-sm leading-relaxed text-foreground">{insight}</p></div>
               </CardContent>
             </Card>
           </section>
@@ -171,16 +260,22 @@ export const InsightsPage = () => {
             <Card className="border-border/80 bg-card shadow-ios-sm">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between"><div><p className="section-header">Top apps</p><p className="mt-1 text-xs text-muted-foreground">Share of tracked time this week</p></div><AppWindow className="h-5 w-5 text-primary" /></div>
-                <div className="mt-5 divide-y divide-border/60">
-                  {summary.topApps.length ? summary.topApps.map((app, index) => (
-                    <div key={app.key} className="grid grid-cols-[24px_minmax(0,1fr)_minmax(90px,180px)_52px] items-center gap-3 py-3">
-                      <span className="font-numeric text-[11px] text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
-                      <div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{app.name}</p><p className="truncate text-[11px] text-muted-foreground">{app.category} · {formatTrackedTime(app.seconds)}</p></div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${CATEGORY_STYLES[app.category] || CATEGORY_STYLES.Other}`} style={{ width: `${app.percentage}%` }} /></div>
-                      <span className="text-right font-numeric text-xs font-semibold text-foreground">{app.percentage}%</span>
+                {topApp ? (
+                  <div className="mt-5 grid gap-5 md:grid-cols-[190px_minmax(0,1fr)]">
+                    <div className="flex min-w-0 flex-col justify-center border-b border-border/70 pb-5 md:border-b-0 md:border-r md:pb-0 md:pr-5">
+                      <AppLogo app={topApp} large />
+                      <p className="mt-4 truncate text-xl font-semibold text-foreground">{topApp.name}</p>
+                      <p className="mt-1 text-[11px] font-semibold uppercase text-muted-foreground">Most used app</p>
+                      <p className="mt-4 font-numeric text-3xl font-semibold text-primary">{topApp.percentage}%</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatTrackedTime(topApp.seconds)} of your week</p>
                     </div>
-                  )) : <p className="py-10 text-center text-sm text-muted-foreground">Your app distribution will appear after a little desktop time.</p>}
-                </div>
+                    <div className="min-w-0 divide-y divide-border/60">
+                      {summary.topApps.slice(1).length
+                        ? summary.topApps.slice(1).map((app) => <TopAppRow key={app.key} app={app} />)
+                        : <div className="flex min-h-32 items-center justify-center text-center text-sm text-muted-foreground">More app activity will appear here as your week develops.</div>}
+                    </div>
+                  </div>
+                ) : <p className="py-10 text-center text-sm text-muted-foreground">Your app distribution will appear after a little desktop time.</p>}
               </CardContent>
             </Card>
 
@@ -201,7 +296,7 @@ export const InsightsPage = () => {
           </section>
 
           <section className="flex flex-col gap-4 border-t border-border/70 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--status-done-bg))] text-[hsl(var(--status-done-fg))]"><EyeOff className="h-4 w-4" /></span><div><p className="text-sm font-semibold text-foreground">Private by design</p><p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Only app names and durations are stored locally. No tabs, URLs, window titles, typing, files, screenshots, or message content.</p></div></div>
+            <div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--status-done-bg))] text-[hsl(var(--status-done-fg))]"><EyeOff className="h-4 w-4" /></span><div><p className="text-sm font-semibold text-foreground">Private by design</p><p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Only app names, public icons, and durations are stored locally. No tabs, URLs, window titles, typing, files, screenshots, or message content.</p></div></div>
             <Button className="shrink-0" variant="outline" size="sm" onClick={() => setTracking(false)}><Pause className="mr-2 h-3.5 w-3.5" />Pause tracking</Button>
           </section>
         </div>

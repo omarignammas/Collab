@@ -377,9 +377,9 @@ export const StatsPage = () => {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card className="border-border/80 bg-card">
               <CardContent className="p-5">
-                <p className="section-header mb-4">tasks by course</p>
+                <p className="section-header mb-4">tasks by project</p>
                 {courseCompletionRates.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No tasks assigned to a course yet.</p>
+                  <p className="text-sm text-muted-foreground">No tasks assigned to a project yet.</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                     {courseCompletionRates.map((course) => (

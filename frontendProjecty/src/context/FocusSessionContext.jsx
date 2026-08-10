@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isTauri } from '@tauri-apps/api/core';
@@ -37,7 +38,7 @@ const formatLatestMessage = (message) => {
 // any other page and only clears when the user actually leaves or ends it.
 export const FocusSessionProvider = ({ children }) => {
   const { user } = useAuth();
-  const { enabled: desktopTrackingEnabled, currentApp } = useActivityTracking();
+  const { enabled: desktopTrackingEnabled, currentApp, setFocusContext } = useActivityTracking();
   const navigate = useNavigate();
   const [activeRoomCode, setActiveRoomCode] = useState(null);
   const socket = useFocusRoomSocketWithSignals(activeRoomCode);
@@ -117,6 +118,16 @@ export const FocusSessionProvider = ({ children }) => {
   useEffect(() => {
     if (!desktopTrackingEnabled) setShareFocusSignal(false);
   }, [desktopTrackingEnabled]);
+
+  useEffect(() => {
+    const active = Boolean(
+      desktopTrackingEnabled
+      && room?.status === 'ACTIVE'
+      && room?.currentPhase === 'WORK'
+    );
+    setFocusContext(active ? { active: true, roomCode: room.code } : null);
+    return () => setFocusContext(null);
+  }, [desktopTrackingEnabled, room?.code, room?.currentPhase, room?.status, setFocusContext]);
 
   const joinSession = useCallback((code) => {
     setActiveRoomCode((prev) => (prev === code ? prev : code));

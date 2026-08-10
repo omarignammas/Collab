@@ -100,7 +100,7 @@ export const UploadSummaryDialog = ({ open, onOpenChange, onUploaded }) => {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Upload Course Material</DialogTitle>
+          <DialogTitle>Upload project material</DialogTitle>
           <DialogDescription>Upload a PDF or image and AI will generate a study summary and diagram.</DialogDescription>
         </DialogHeader>
 
@@ -160,13 +160,13 @@ export const UploadSummaryDialog = ({ open, onOpenChange, onUploaded }) => {
               </div>
 
               <div className="space-y-2">
-                <Label>Course (optional)</Label>
+                <Label>Project (optional)</Label>
                 <Select value={courseId} onValueChange={setCourseId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="No course tag" />
+                    <SelectValue placeholder="No project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No course tag</SelectItem>
+                    <SelectItem value="none">No project</SelectItem>
                     {courses.map((course) => (
                       <SelectItem key={course.id} value={String(course.id)}>{course.title}</SelectItem>
                     ))}

@@ -88,7 +88,7 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }) => {
       onCourseCreated(newCourse);
       resetForm();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create course');
+      setError(err.response?.data?.message || 'Failed to create project');
     } finally {
       setLoading(false);
     }
@@ -110,9 +110,9 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }) => {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create New Course</DialogTitle>
+          <DialogTitle>Create new project</DialogTitle>
           <DialogDescription>
-            Add a new course to organize your tasks
+            Create a workspace for its tasks, material, and collaborators.
           </DialogDescription>
         </DialogHeader>
 
@@ -125,11 +125,11 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }) => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="title">Course Title *</Label>
+              <Label htmlFor="title">Project title *</Label>
               <Input
                 id="title"
                 name="title"
-                placeholder="e.g., Organic Chemistry"
+                placeholder="e.g., React launch"
                 value={formData.title}
                 onChange={handleChange}
                 required
@@ -141,7 +141,7 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }) => {
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Brief description of your course..."
+                placeholder="What is this project trying to achieve?"
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
@@ -263,7 +263,7 @@ export const CreateCourseDialog = ({ open, onOpenChange, onCourseCreated }) => {
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !termId}>
-              {loading ? 'Creating...' : 'Create Course'}
+              {loading ? 'Creating...' : 'Create project'}
             </Button>
           </DialogFooter>
         </form>

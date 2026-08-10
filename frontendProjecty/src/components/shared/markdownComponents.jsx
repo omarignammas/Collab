@@ -1,5 +1,5 @@
 // Shared ReactMarkdown component-override map — renders AI-generated markdown
-// (session reports, course summaries) with this app's own Tailwind tokens
+// (session reports, project summaries) with this app's own Tailwind tokens
 // instead of pulling in a typography/prose plugin.
 export const markdownComponents = {
   h1: (props) => <h2 className="mb-3 mt-6 text-xl font-bold text-foreground first:mt-0" {...props} />,

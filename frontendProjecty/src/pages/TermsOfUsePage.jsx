@@ -12,7 +12,7 @@ const SECTIONS = [
   {
     title: '2. What Collab is',
     body: [
-      `Collab is a coursework workspace: courses and tasks organized by term, a calendar, a Kanban board, notes (including saved articles), synchronized Pomodoro "Focus Rooms" you can share with friends over a real-time connection, a friends/notifications system, and usage statistics.`,
+      `Collab is a project workspace: projects and tasks organized by term, a calendar, a Kanban board, notes, synchronized Pomodoro "Focus Rooms" you can share with friends over a real-time connection, a friends/notifications system, and usage statistics.`,
       `The Service is provided on an "as available" basis and may change, and features may be added or removed, at any time.`,
     ],
   },
@@ -34,7 +34,7 @@ const SECTIONS = [
   {
     title: '5. Your content',
     body: [
-      `You keep ownership of everything you create in Collab — your tasks, courses, notes, chat messages, and uploaded avatar image ("Your Content"). By using the Service, you grant us a limited license to store, process, and display Your Content solely to operate and provide the Service to you (and, where a feature is explicitly collaborative — like a shared Focus Room — to the other participants you invite).`,
+      `You keep ownership of everything you create in Collab — your tasks, projects, notes, chat messages, and uploaded avatar image ("Your Content"). By using the Service, you grant us a limited license to store, process, and display Your Content solely to operate and provide the Service to you (and, where a feature is explicitly collaborative — like a shared Focus Room — to the other participants you invite).`,
       `The Notes feature can fetch and store the readable text of an article at a URL you provide. You're responsible for the links you submit, and for having the right to save that content for your own use. We don't claim ownership over third-party article text fetched this way, and we make no guarantee about the accuracy or availability of content from a URL you provide.`,
     ],
   },

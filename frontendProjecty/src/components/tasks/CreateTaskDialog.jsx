@@ -116,7 +116,7 @@ export const CreateTaskDialog = ({ defaultCourseId, defaultType, open, onOpenCha
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>
-            Add a new task, optionally attached to a course
+            Add a task, optionally attached to a project.
           </DialogDescription>
         </DialogHeader>
 
@@ -153,13 +153,13 @@ export const CreateTaskDialog = ({ defaultCourseId, defaultType, open, onOpenCha
             </div>
 
             <div className="space-y-2">
-              <Label>Course</Label>
+              <Label>Project</Label>
               <Select value={courseId} onValueChange={setCourseId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="No course — personal task" />
+                  <SelectValue placeholder="No project — personal task" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No course — personal task</SelectItem>
+                  <SelectItem value="none">No project — personal task</SelectItem>
                   {courses.map((course) => (
                     <SelectItem key={course.id} value={String(course.id)}>
                       {course.title}

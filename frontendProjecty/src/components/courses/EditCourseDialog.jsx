@@ -67,7 +67,7 @@ export const EditCourseDialog = ({ course, open, onOpenChange, onCourseUpdated }
       });
       onCourseUpdated(updatedCourse);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update course');
+      setError(err.response?.data?.message || 'Failed to update project');
     } finally {
       setLoading(false);
     }
@@ -82,9 +82,9 @@ export const EditCourseDialog = ({ course, open, onOpenChange, onCourseUpdated }
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Edit Course</DialogTitle>
+          <DialogTitle>Edit project</DialogTitle>
           <DialogDescription>
-            Update your course details
+            Update your project details
           </DialogDescription>
         </DialogHeader>
 
@@ -97,7 +97,7 @@ export const EditCourseDialog = ({ course, open, onOpenChange, onCourseUpdated }
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="title">Course Title *</Label>
+              <Label htmlFor="title">Project title *</Label>
               <Input
                 id="title"
                 name="title"
@@ -113,7 +113,7 @@ export const EditCourseDialog = ({ course, open, onOpenChange, onCourseUpdated }
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Brief description of your course..."
+                placeholder="What is this project trying to achieve?"
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}

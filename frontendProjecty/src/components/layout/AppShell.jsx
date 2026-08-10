@@ -41,7 +41,7 @@ export const AppShell = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh min-h-0 overflow-hidden bg-background">
       <Sidebar
         onQuickAdd={() => setIsQuickAddOpen(true)}
         mobileOpen={isMobileNavOpen}

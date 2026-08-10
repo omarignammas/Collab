@@ -51,7 +51,7 @@ export const CourseCard = ({ course, onDelete }) => {
       await courseService.deleteCourse(course.id)
 
       toast({
-        title: "Course deleted",
+        title: "Project deleted",
         description: `"${course.title}" has been successfully deleted.`,
         variant: "default",
       })
@@ -63,7 +63,7 @@ export const CourseCard = ({ course, onDelete }) => {
 
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete course. Please try again.",
+        description: error.response?.data?.message || "Failed to delete project. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -72,7 +72,7 @@ export const CourseCard = ({ course, onDelete }) => {
   }
 
   const handleCardClick = () => {
-    navigate(`/courses/${course.id}`)
+    navigate(`/projects/${course.id}`)
   }
 
   const handleDeleteClick = (e) => {
@@ -134,9 +134,9 @@ export const CourseCard = ({ course, onDelete }) => {
               </AlertDialogTrigger>
               <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Course?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete project?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the course
+                    This action cannot be undone. This will permanently delete the project
                     <strong className="text-foreground"> "{course.title}" </strong>
                     and all its tasks.
                   </AlertDialogDescription>
