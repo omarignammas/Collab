@@ -40,6 +40,7 @@ const NOTIFICATION_ICONS = {
   FOCUS_ROOM_INVITE: Users,
   FRIEND_REQUEST_RECEIVED: UserPlus,
   FOCUS_ROOM_REPORT_READY: FileText,
+  CIRCLE_INVITE: Users,
 };
 
 const formatAge = (createdAt) => {

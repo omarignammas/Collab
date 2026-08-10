@@ -20,7 +20,7 @@ import { useAuth } from './hooks/useAuth';
 // should reopen straight into the app, not force the login screen again.
 const DesktopEntryPage = () => {
   const { isAuthenticated } = useAuth();
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+  return <Navigate to={isAuthenticated ? '/today' : '/login'} replace />;
 };
 const EntryPage = isTauri() ? DesktopEntryPage : LandingPage;
 
@@ -34,6 +34,7 @@ const TermsOfUsePage = lazy(() => import('./pages/TermsOfUsePage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const AppShell = lazy(() => import('./components/layout/AppShell'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const TodayPage = lazy(() => import('./pages/TodayPage'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const CoursesPage = lazy(() => import('./pages/CoursesPage'));
 const CourseDetailPage = lazy(() => import('./pages/CourseDetailPage'));
@@ -51,6 +52,7 @@ const SummariesPage = lazy(() => import('./pages/SummariesPage'));
 const SummaryDetailPage = lazy(() => import('./pages/SummaryDetailPage'));
 const QuizTakePage = lazy(() => import('./pages/QuizTakePage'));
 const WidgetPage = lazy(() => import('./pages/WidgetPage'));
+const CirclesPage = lazy(() => import('./pages/CirclesPage'));
 
 const GLOBAL_ASSISTANT_SHORTCUTS = ['Control+Alt+C', 'Control+Alt+Space'];
 
@@ -150,6 +152,7 @@ function App() {
               }
             >
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/today" element={<TodayPage />} />
               <Route path="/tasks" element={<TasksPage />} />
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/courses/:courseId" element={<CourseDetailPage />} />
@@ -158,6 +161,7 @@ function App() {
               <Route path="/focus-rooms/:roomCode" element={<FocusRoomPage />} />
               <Route path="/notes" element={<NotesPage />} />
               <Route path="/friends" element={<FriendsPage />} />
+              <Route path="/circles" element={<CirclesPage />} />
               <Route path="/stats" element={<StatsPage />} />
               <Route path="/overdue" element={<OverduePage />} />
               <Route path="/settings" element={<SettingsPage />} />

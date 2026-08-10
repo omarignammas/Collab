@@ -4,6 +4,7 @@ import {
   FolderKanban,
   Plus,
   Home,
+  Sun,
   ListTodo,
   LayoutGrid,
   CalendarDays,
@@ -26,6 +27,7 @@ const NAV_SECTIONS = [
   {
     label: 'Overview',
     items: [
+      { to: '/today', label: 'Today', icon: Sun },
       { to: '/dashboard', label: 'Dashboard', icon: Home },
       { to: '/stats', label: 'Stats', icon: BarChart3 },
       { to: '/overdue', label: 'Overdue', icon: AlertTriangle },
@@ -45,6 +47,7 @@ const NAV_SECTIONS = [
     label: 'Together',
     items: [
       { to: '/focus-rooms', label: 'Focus Rooms', icon: Timer },
+      { to: '/circles', label: 'Circles', icon: Users },
       { to: '/friends', label: 'Friends', icon: Users },
     ],
   },
@@ -86,7 +89,7 @@ const SidebarNav = ({ expanded, onQuickAdd, onNavigate, showCollapseToggle, onTo
   <>
     <div className={`mb-4 flex items-center ${expanded ? 'justify-between px-1 pr-8' : 'justify-center'}`}>
       <NavLink
-        to="/dashboard"
+        to="/today"
         onClick={onNavigate}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-ios-sm"
       >

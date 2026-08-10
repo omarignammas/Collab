@@ -24,7 +24,7 @@ export const LoginPage = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/today');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password');
     } finally {
