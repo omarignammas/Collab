@@ -37,6 +37,38 @@ jobs:
         working-directory: frontendProjecty
         run: npm ci
 
+      # Every workflow run gets a new app version. This makes macOS replace the
+      # installed bundle instead of treating a new build as the old 0.1.0 app.
+      - name: Set unique desktop build version
+        shell: bash
+        env:
+          RELEASE_VERSION: 0.1.${{ github.run_number }}
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+
+            const version = process.env.RELEASE_VERSION;
+            if (!/^\d+\.\d+\.\d+$/.test(version)) {
+              throw new Error(`Invalid release version: ${version}`);
+            }
+
+            const configPath = "frontendProjecty/src-tauri/tauri.conf.json";
+            const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+            config.version = version;
+            fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+            const cargoPath = "frontendProjecty/src-tauri/Cargo.toml";
+            const cargo = fs.readFileSync(cargoPath, "utf8");
+            const updatedCargo = cargo.replace(
+              /^(version\s*=\s*)"[^"]+"$/m,
+              `$1"${version}"`,
+            );
+            if (updatedCargo === cargo) {
+              throw new Error("Could not update the desktop package version.");
+            }
+            fs.writeFileSync(cargoPath, updatedCargo);
+          '
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -48,7 +80,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: collab-${{ matrix.platform }}
+          name: collab-${{ matrix.platform }}-${{ github.run_number }}
           path: |
             frontendProjecty/src-tauri/target/release/bundle/**/*.dmg
             frontendProjecty/src-tauri/target/**/release/bundle/**/*.dmg
