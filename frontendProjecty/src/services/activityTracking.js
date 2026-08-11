@@ -7,6 +7,7 @@ const SETTINGS_KEY = 'collab.desktop-activity.enabled';
 const MAX_DAYS = 90;
 const MAX_CACHED_ICONS = 16;
 const MAX_ICON_DATA_URL_LENGTH = 750_000;
+const MAX_ICON_EDGE = 96;
 
 const APP_RULES = [
   { category: 'Deep work', names: ['Visual Studio Code', 'Cursor', 'Xcode', 'IntelliJ IDEA', 'PyCharm', 'Terminal', 'iTerm'], bundles: ['com.microsoft.VSCode', 'com.todesktop.230313mzl4w4u92', 'com.apple.dt.Xcode', 'com.googlecode.iterm2'] },
@@ -74,33 +75,88 @@ export const readActivityIconCache = () => {
   }
 };
 
-const cacheAppIcon = (app) => {
-  const key = appIdentity(app);
-  if (
-    !key
-    || !app.iconDataUrl?.startsWith('data:image/')
-    || app.iconDataUrl.length > MAX_ICON_DATA_URL_LENGTH
-  ) return;
+const writeIconCache = (key, iconDataUrl) => {
+  if (!key || !iconDataUrl?.startsWith('data:image/')) return false;
 
   const cache = readActivityIconCache();
-  if (cache[key] === app.iconDataUrl) return;
-  cache[key] = app.iconDataUrl;
+  if (cache[key] === iconDataUrl) return false;
+  cache[key] = iconDataUrl;
   const keys = Object.keys(cache);
   while (keys.length > MAX_CACHED_ICONS) delete cache[keys.shift()];
   while (keys.length) {
     try {
       localStorage.setItem(ICON_CACHE_KEY, JSON.stringify(cache));
-      return;
+      return true;
     } catch {
       delete cache[keys.shift()];
     }
   }
+  return false;
 };
 
-export const recordActivity = (app, seconds, now = new Date(), focusContext = null) => {
+// macOS commonly supplies 512px or 1024px public app icons. Those are too
+// large for localStorage once base64-encoded, so create a small local preview
+// before caching it for the Insights app list.
+const resizeIconForCache = (iconDataUrl) => new Promise((resolve) => {
+  if (typeof Image === 'undefined' || typeof document === 'undefined') {
+    resolve(null);
+    return;
+  }
+
+  const image = new Image();
+  image.onload = () => {
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    if (!sourceWidth || !sourceHeight) {
+      resolve(null);
+      return;
+    }
+
+    const scale = Math.min(1, MAX_ICON_EDGE / Math.max(sourceWidth, sourceHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+    canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) {
+      resolve(null);
+      return;
+    }
+
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    try {
+      const resized = canvas.toDataURL('image/png');
+      resolve(resized.length <= MAX_ICON_DATA_URL_LENGTH ? resized : null);
+    } catch {
+      resolve(null);
+    }
+  };
+  image.onerror = () => resolve(null);
+  image.src = iconDataUrl;
+});
+
+const cacheAppIcon = (app, onCached) => {
+  const key = appIdentity(app);
+  if (
+    !key
+    || !app.iconDataUrl?.startsWith('data:image/')
+  ) return;
+
+  if (app.iconDataUrl.length <= MAX_ICON_DATA_URL_LENGTH) {
+    if (writeIconCache(key, app.iconDataUrl)) onCached?.();
+    return;
+  }
+
+  resizeIconForCache(app.iconDataUrl).then((resizedIcon) => {
+    if (resizedIcon && writeIconCache(key, resizedIcon)) onCached?.();
+  });
+};
+
+export const recordActivity = (app, seconds, now = new Date(), focusContext = null, onIconCached) => {
   if (!app?.name || !seconds || app.bundleId === 'com.collab.desktop') return readActivityEntries();
 
-  cacheAppIcon(app);
+  cacheAppIcon(app, onIconCached);
 
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - MAX_DAYS);

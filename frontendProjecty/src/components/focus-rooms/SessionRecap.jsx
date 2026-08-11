@@ -82,17 +82,17 @@ export const SessionRecap = ({ room, userEmail }) => {
   };
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="flex flex-col items-center rounded-2xl border border-border/60 bg-card shadow-ios p-8 text-center">
+    <div className="mx-auto min-w-0 max-w-lg">
+      <div className="flex flex-col items-center rounded-2xl border border-border/60 bg-card p-4 text-center shadow-ios sm:p-8">
         <CheckCircle2 className="mb-3 h-8 w-8 text-[hsl(var(--status-done-fg))]" />
         <h2 className="text-xl font-semibold text-foreground">Session Complete — {totalLabel}</h2>
 
         <div className="mt-6 w-full divide-y divide-border/40 text-left">
           {sortedParticipants.map((p) => (
-            <div key={p.userId} className="flex items-center justify-between py-2 text-sm">
-              <span className="font-medium text-foreground">{p.email === userEmail ? 'You' : p.displayName}</span>
-              <span className="font-numeric text-muted-foreground">{p.minutesFocused} min focused</span>
-              <span className="flex items-center gap-1 text-xs">
+            <div key={p.userId} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-2 text-left text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+              <span className="truncate font-medium text-foreground">{p.email === userEmail ? 'You' : p.displayName}</span>
+              <span className="font-numeric text-right text-muted-foreground">{p.minutesFocused} min focused</span>
+              <span className="col-span-2 flex items-center gap-1 text-xs sm:col-span-1">
                 {p.status === 'COMPLETED' ? (
                   <>
                     <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(var(--status-done-fg))]" />
@@ -109,13 +109,13 @@ export const SessionRecap = ({ room, userEmail }) => {
           ))}
         </div>
 
-        <div className="mt-8 flex gap-3">
-          <Button variant="outline" onClick={handleCopyRecap}>
+        <div className="mt-8 flex w-full flex-col gap-3 min-[380px]:w-auto min-[380px]:flex-row">
+          <Button variant="outline" onClick={handleCopyRecap} className="w-full min-[380px]:w-auto">
             <Copy className="mr-2 h-4 w-4" />
             Copy Recap
           </Button>
           {isHost && (
-            <Button onClick={handleRematch} disabled={rematching}>
+            <Button onClick={handleRematch} disabled={rematching} className="w-full min-[380px]:w-auto">
               <RotateCcw className="mr-2 h-4 w-4" />
               {rematching ? 'Starting...' : 'Rematch'}
             </Button>
@@ -124,7 +124,7 @@ export const SessionRecap = ({ room, userEmail }) => {
       </div>
 
       {room.aiReportEnabled && (
-        <div className="mt-6 rounded-2xl border border-border/60 bg-card shadow-ios p-6 text-left">
+        <div className="mt-6 min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card p-4 text-left shadow-ios sm:p-6">
           <p className="section-header mb-3">
             <Sparkles className="h-4 w-4 text-primary" />
             AI session report

@@ -118,7 +118,7 @@ export const SessionNotes = ({ roomCode }) => {
                         {format(new Date(note.createdAt), 'HH:mm')}
                       </span>
                     </div>
-                    {note.body && <p className="whitespace-pre-wrap text-xs text-muted-foreground">{note.body}</p>}
+                    {note.body && <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">{note.body}</p>}
                   </div>
                 ))}
               </div>

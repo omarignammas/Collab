@@ -28,6 +28,8 @@ export const SummaryDetailPage = () => {
 
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [pollVersion, setPollVersion] = useState(0);
   const [quizzes, setQuizzes] = useState([]);
   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [difficulty, setDifficulty] = useState('MEDIUM');
@@ -64,8 +66,13 @@ export const SummaryDetailPage = () => {
   };
 
   const fetchQuizzes = async (id) => {
-    const result = await quizService.getQuizzesForSummary(id);
-    setQuizzes(result);
+    try {
+      const result = await quizService.getQuizzesForSummary(id);
+      setQuizzes(result);
+    } catch (error) {
+      console.error('Could not load quizzes for this summary:', error);
+      setQuizzes([]);
+    }
   };
 
   useEffect(() => {
@@ -77,14 +84,18 @@ export const SummaryDetailPage = () => {
         const data = await courseSummaryService.getSummaryById(summaryId);
         if (cancelled) return;
         setSummary(data);
+        setLoadError('');
         setLoading(false);
         if (data.status === 'PENDING') {
           timeoutId = setTimeout(poll, 3000);
         } else {
           fetchQuizzes(summaryId);
         }
-      } catch {
-        if (!cancelled) setLoading(false);
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error.response?.data?.message || 'Could not load this summary.');
+          setLoading(false);
+        }
       }
     };
 
@@ -93,7 +104,7 @@ export const SummaryDetailPage = () => {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [summaryId]);
+  }, [summaryId, pollVersion]);
 
   const handleRetry = async () => {
     setRetrying(true);
@@ -101,8 +112,7 @@ export const SummaryDetailPage = () => {
       await courseSummaryService.retry(summaryId);
       setSummary((prev) => ({ ...prev, status: 'PENDING' }));
       toast({ title: 'Retrying', description: 'Regenerating your summary…' });
-      const data = await courseSummaryService.getSummaryById(summaryId);
-      setSummary(data);
+      setPollVersion((value) => value + 1);
     } catch (error) {
       toast({ title: 'Could not retry', description: error.response?.data?.message || 'Please try again.', variant: 'destructive' });
     } finally {
@@ -149,18 +159,30 @@ export const SummaryDetailPage = () => {
     return <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">Loading summary...</div>;
   }
 
-  if (!summary) {
-    return <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">Summary not found</div>;
+  if (loadError || !summary) {
+    return (
+      <div className="container mx-auto flex min-h-[50dvh] max-w-xl flex-col items-center justify-center px-4 py-8 text-center">
+        <FileText className="mb-4 h-8 w-8 text-muted-foreground" />
+        <p className="font-semibold text-foreground">Could not open this summary</p>
+        <p className="mt-2 text-sm text-muted-foreground">{loadError || 'The summary may no longer be available.'}</p>
+        <div className="mt-5 flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/summaries')}>Back</Button>
+          <Button onClick={() => { setLoading(true); setLoadError(''); setPollVersion((value) => value + 1); }}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="accent-blue container mx-auto max-w-5xl px-4 py-10">
+    <div className="accent-blue container mx-auto min-w-0 max-w-5xl px-3 py-5 sm:px-4 sm:py-8 lg:py-10">
       <Button variant="ghost" onClick={() => navigate('/summaries')} className="mb-6 text-muted-foreground hover:text-foreground">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Summaries
       </Button>
 
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex min-w-0 items-start justify-between gap-3 sm:gap-4">
         <PageHero
           icon={summary.researchReport ? Search : FileText}
           title={summary.title}
@@ -175,7 +197,7 @@ export const SummaryDetailPage = () => {
 
       {summary.status === 'PENDING' && (
         <Card className="border-border/80 bg-card">
-          <CardContent className="flex items-center justify-between gap-3 p-6">
+          <CardContent className="flex flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
             <p className="flex items-center gap-3 text-sm text-muted-foreground">
               <Sparkles className="h-4 w-4 animate-pulse text-primary" />
               {summary.researchReport ? 'Researching, comparing, and preparing your report…' : 'Generating your summary and diagram…'}
@@ -192,7 +214,7 @@ export const SummaryDetailPage = () => {
 
       {summary.status === 'FAILED' && (
         <Card className="border-border/80 bg-card">
-          <CardContent className="flex items-center justify-between gap-3 p-6">
+          <CardContent className="flex flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
             <p className="text-sm text-muted-foreground">{summary.researchReport ? 'Could not complete this research report.' : "Couldn't generate a summary for this file."}</p>
             {summary.isOwner && (
               <Button variant="outline" size="sm" onClick={handleRetry} disabled={retrying}>
@@ -206,7 +228,7 @@ export const SummaryDetailPage = () => {
 
       {summary.status === 'CANCELLED' && (
         <Card className="border-border/80 bg-card">
-          <CardContent className="flex items-center justify-between gap-3 p-6">
+          <CardContent className="flex flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center sm:p-6">
             <p className="text-sm text-muted-foreground">Summary generation was cancelled.</p>
             {summary.isOwner && (
               <Button variant="outline" size="sm" onClick={handleRetry} disabled={retrying}>
@@ -223,7 +245,7 @@ export const SummaryDetailPage = () => {
           {!summary.researchReport && summary.diagramJson && <ConceptMap json={summary.diagramJson} />}
 
           <Card className="border-border/80 bg-card">
-            <CardContent className="p-6">
+            <CardContent className="min-w-0 overflow-hidden p-4 sm:p-6">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {summary.summaryMarkdown}
               </ReactMarkdown>

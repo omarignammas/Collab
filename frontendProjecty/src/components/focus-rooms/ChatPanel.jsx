@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { memo, useState, useEffect, useRef, useMemo } from 'react';
+import { motion as Motion, AnimatePresence } from 'motion/react';
 import { Lock, Hand, Send, MessageSquare, Smile, Sparkles, ExternalLink, Mic, Square, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
@@ -37,7 +37,7 @@ const aiMarkdownComponents = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+      className="inline-flex max-w-full items-center gap-1 break-all font-medium text-primary underline underline-offset-2 hover:text-primary/80"
       {...props}
     >
       <ExternalLink className="h-3 w-3 shrink-0" />
@@ -139,7 +139,7 @@ export const ChatPanel = ({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-ios">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 p-4">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 p-3 sm:p-4">
         <p className="section-header">
           <MessageSquare className="h-4 w-4 text-primary" />
           room chat
@@ -147,7 +147,7 @@ export const ChatPanel = ({
         {isHost && <ChatModeSelect value={chatMode} onChange={onChatModeChange} className="h-8 w-auto text-xs" />}
       </div>
 
-      <div ref={listRef} className="thin-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+      <div ref={listRef} className="thin-scrollbar min-h-0 min-w-0 flex-1 overscroll-contain overflow-y-auto overflow-x-hidden px-2 py-3">
         {fullyLocked && (
           <div className="mx-2 mb-2 flex items-start gap-2 rounded-xl border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground">
             <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -194,7 +194,7 @@ export const ChatPanel = ({
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1 overflow-hidden">
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span className="text-sm font-semibold text-primary">Collab</span>
                     {elapsedMs != null && elapsedMs >= 0 && (
                       <span className="text-[11px] text-muted-foreground">
@@ -203,7 +203,7 @@ export const ChatPanel = ({
                       </span>
                     )}
                   </div>
-                  <div className="animate-in fade-in slide-in-from-bottom-1 mt-0.5 max-w-full overflow-hidden break-words text-foreground">
+                  <div className="animate-in fade-in slide-in-from-bottom-1 mt-0.5 min-w-0 max-w-full break-words [overflow-wrap:anywhere] text-foreground">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={aiMarkdownComponents}>
                       {m.body}
                     </ReactMarkdown>
@@ -242,7 +242,7 @@ export const ChatPanel = ({
         })}
       </div>
 
-      <form onSubmit={handleSubmit} className="flex shrink-0 items-center gap-2 border-t border-border/60 p-3">
+      <form onSubmit={handleSubmit} className="flex shrink-0 items-center gap-1.5 border-t border-border/60 p-2 sm:gap-2 sm:p-3">
         <Button
           type="button"
           variant={handRaised ? 'default' : 'outline'}
@@ -264,7 +264,7 @@ export const ChatPanel = ({
         >
           <AnimatePresence>
             {recordingState === 'recording' && (
-              <motion.span
+              <Motion.span
                 className="absolute inset-0 rounded-lg bg-destructive/40"
                 initial={{ opacity: 0.6, scale: 1 }}
                 animate={{ opacity: 0, scale: 1.6 }}
@@ -305,4 +305,4 @@ export const ChatPanel = ({
   );
 };
 
-export default ChatPanel;
+export default memo(ChatPanel);

@@ -121,7 +121,7 @@ export const AppShell = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overscroll-contain overflow-y-auto overflow-x-hidden">
           <Outlet />
         </main>
       </div>

@@ -8,7 +8,6 @@ import CreateCourseDialog from '../components/courses/CreateCourseDialog';
 import ImportYoutubePlaylistDialog from '../components/courses/ImportYoutubePlaylistDialog';
 import courseService from '../services/courseService';
 import termService from '../services/termService';
-import { StatCard } from '../components/shared/StatCard';
 import PageHero from '../components/shared/PageHero';
 
 export const CoursesPage = () => {
@@ -19,15 +18,6 @@ export const CoursesPage = () => {
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-
-  // Stats
-  const [stats, setStats] = useState({
-    totalCourses: 0,
-    completedCourses: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    overallProgress: 0,
-  });
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,6 +69,7 @@ export const CoursesPage = () => {
           progress: progress.progressPercentage,
           totalTasks: progress.totalTasks,
           completedTasks: progress.completedTasks,
+          progressData: progress,
         };
       } catch (error) {
         console.error(`Error fetching progress for course ${course.id}:`, error);
@@ -87,44 +78,13 @@ export const CoursesPage = () => {
           progress: 0,
           totalTasks: 0,
           completedTasks: 0,
+          progressData: null,
         };
       }
     });
 
     const coursesWithProgressData = await Promise.all(progressPromises);
     setCoursesWithProgress(coursesWithProgressData);
-
-    calculateStats(coursesWithProgressData);
-  };
-
-  const calculateStats = (coursesWithProgressData) => {
-    let totalCourses = coursesWithProgressData.length;
-    let completedCourses = 0;
-    let totalTasks = 0;
-    let completedTasks = 0;
-
-    coursesWithProgressData.forEach(course => {
-      totalTasks += course.totalTasks;
-      completedTasks += course.completedTasks;
-
-      if (course.progress === 100) {
-        completedCourses++;
-      }
-    });
-
-    const overallProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-    const courseCompletionRate = totalCourses > 0 ? (completedCourses / totalCourses) * 100 : 0;
-    const taskCompletionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-    setStats({
-      totalCourses,
-      completedCourses,
-      totalTasks,
-      completedTasks,
-      overallProgress: Math.round(overallProgress),
-      courseCompletionRate: Math.round(courseCompletionRate),
-      taskCompletionRate: Math.round(taskCompletionRate),
-    });
   };
 
   useEffect(() => {
@@ -133,6 +93,8 @@ export const CoursesPage = () => {
 
   useEffect(() => {
     fetchCourses(page);
+    // fetchCourses is intentionally keyed by the requested page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   useEffect(() => {
@@ -220,42 +182,6 @@ export const CoursesPage = () => {
           </button>
         </div>
       )}
-
-      {/* Stats Cards with Circular Progress */}
-      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[196px] animate-pulse rounded-xl border border-border/80 bg-card" />
-          ))
-        ) : (
-          <>
-            <StatCard
-              title="Overall Progress"
-              subtitle={`${stats.completedTasks}/${stats.totalTasks} tasks done`}
-              percentage={stats.overallProgress}
-              color="blue"
-            />
-            <StatCard
-              title="Total projects"
-              subtitle={`${stats.completedCourses} completed`}
-              percentage={stats.courseCompletionRate || 0}
-              color="purple"
-            />
-            <StatCard
-              title="Tasks Completed"
-              subtitle={`out of ${stats.totalTasks} total`}
-              percentage={stats.taskCompletionRate || 0}
-              color="green"
-            />
-            <StatCard
-              title="Projects achieved"
-              subtitle={`${stats.courseCompletionRate || 0}% completion rate`}
-              percentage={stats.courseCompletionRate || 0}
-              color="orange"
-            />
-          </>
-        )}
-      </div>
 
       {/* Filters Row */}
       <div className="mb-6">

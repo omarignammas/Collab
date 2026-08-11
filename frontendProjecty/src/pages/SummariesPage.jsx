@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Plus, FileText, HelpCircle, Users, Loader2, Search } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -33,26 +33,35 @@ export const SummariesPage = () => {
   const [summaries, setSummaries] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isResearchOpen, setIsResearchOpen] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [summariesResult, quizzesResult] = await Promise.all([
-        courseSummaryService.getAllSummaries({ size: 100 }),
-        quizService.getAllQuizzes({ size: 100 }),
-      ]);
-      setSummaries(summariesResult.content || []);
-      setQuizzes(quizzesResult.content || []);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
-  }, []);
+    let cancelled = false;
+    const fetchActiveCollection = async () => {
+      setLoading(true);
+      setLoadError('');
+      try {
+        if (activeTab === 'summaries') {
+          const result = await courseSummaryService.getAllSummaries({ size: 100 });
+          if (!cancelled) setSummaries(result.content || []);
+        } else {
+          const result = await quizService.getAllQuizzes({ size: 100 });
+          if (!cancelled) setQuizzes(result.content || []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error.response?.data?.message || `Could not load your ${activeTab}.`);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchActiveCollection();
+    return () => { cancelled = true; };
+  }, [activeTab, reloadVersion]);
 
   const handleUploaded = (summary) => {
     setIsUploadOpen(false);
@@ -95,39 +104,45 @@ export const SummariesPage = () => {
             <div key={i} className="h-32 animate-pulse rounded-xl border border-border/80 bg-card" />
           ))}
         </div>
+      ) : loadError ? (
+        <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-border px-4 py-10 text-center">
+          <p className="text-sm font-medium text-foreground">Could not load {activeTab}</p>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => setReloadVersion((value) => value + 1)}>
+            Try again
+          </Button>
+        </div>
       ) : activeTab === 'summaries' ? (
         summaries.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">No summaries yet. Upload material or ask Collab to research a topic.</p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {summaries.map((summary) => (
-              <Card
-                key={summary.id}
-                onClick={() => navigate(`/summaries/${summary.id}`)}
-                className="cursor-pointer border-border/80 bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40"
-              >
-                <CardContent className="p-5">
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      {summary.researchReport ? <Search className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    </span>
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      {!summary.isOwner && (
-                        <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/10 text-primary">
-                          <Users className="h-3 w-3" />
-                          shared
-                        </Badge>
-                      )}
-                      {summary.researchReport && <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">research</Badge>}
-                      <StatusBadge status={summary.status} />
+              <Link key={summary.id} to={`/summaries/${summary.id}`} className="block min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Card className="h-full cursor-pointer border-border/80 bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40">
+                  <CardContent className="p-5">
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        {summary.researchReport ? <Search className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                      </span>
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        {!summary.isOwner && (
+                          <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/10 text-primary">
+                            <Users className="h-3 w-3" />
+                            shared
+                          </Badge>
+                        )}
+                        {summary.researchReport && <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">research</Badge>}
+                        <StatusBadge status={summary.status} />
+                      </div>
                     </div>
-                  </div>
-                  <p className="truncate text-sm font-medium text-foreground">{summary.title}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {summary.courseTitle || (summary.isOwner ? 'No project' : `by ${summary.ownerName}`)}
-                  </p>
-                </CardContent>
-              </Card>
+                    <p className="truncate text-sm font-medium text-foreground">{summary.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {summary.courseTitle || (summary.isOwner ? 'No project' : `by ${summary.ownerName}`)}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )
@@ -136,34 +151,32 @@ export const SummariesPage = () => {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {quizzes.map((quiz) => (
-            <Card
-              key={quiz.id}
-              onClick={() => navigate(quiz.status === 'READY' ? `/quizzes/${quiz.id}/take` : `/summaries/${quiz.summaryId}`)}
-              className="cursor-pointer border-border/80 bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40"
-            >
-              <CardContent className="p-5">
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <HelpCircle className="h-4 w-4" />
-                  </span>
-                  <div className="flex flex-wrap justify-end gap-1.5">
-                    {!quiz.isOwner && (
-                      <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/10 text-primary">
-                        <Users className="h-3 w-3" />
-                        shared
-                      </Badge>
-                    )}
-                    <StatusBadge status={quiz.status} />
+            <Link key={quiz.id} to={quiz.status === 'READY' ? `/quizzes/${quiz.id}/take` : `/summaries/${quiz.summaryId}`} className="block min-w-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Card className="h-full cursor-pointer border-border/80 bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40">
+                <CardContent className="p-5">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <HelpCircle className="h-4 w-4" />
+                    </span>
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      {!quiz.isOwner && (
+                        <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/10 text-primary">
+                          <Users className="h-3 w-3" />
+                          shared
+                        </Badge>
+                      )}
+                      <StatusBadge status={quiz.status} />
+                    </div>
                   </div>
-                </div>
-                <p className="truncate text-sm font-medium text-foreground">{quiz.title}</p>
-                <div className="mt-1.5 flex items-center gap-1.5">
-                  <Badge variant="outline" className="border-border text-xs text-muted-foreground">
-                    {DIFFICULTY_LABEL[quiz.difficulty]}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+                  <p className="truncate text-sm font-medium text-foreground">{quiz.title}</p>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <Badge variant="outline" className="border-border text-xs text-muted-foreground">
+                      {DIFFICULTY_LABEL[quiz.difficulty]}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

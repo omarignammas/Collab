@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion as Motion, AnimatePresence } from 'motion/react';
 import { DoorOpen, EyeOff, MonitorCog, Square } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
@@ -53,11 +53,11 @@ export const LiveSession = ({
   const inFocusBlock = room.currentPhase === 'WORK';
 
   return (
-    <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]" style={{ minHeight: '480px' }}>
-      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-ios">
-        <div className="shrink-0 border-b border-border/60 p-5">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-4 lg:h-full lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-ios lg:h-full">
+        <div className="shrink-0 border-b border-border/60 p-4 sm:p-5">
           <AnimatePresence mode="wait">
-            <motion.p
+            <Motion.p
               key={room.currentPhase}
               className="section-header"
               initial={{ opacity: 0, y: -4 }}
@@ -66,12 +66,12 @@ export const LiveSession = ({
             >
               <span className={`h-2 w-2 rounded-full ${inFocusBlock ? 'bg-destructive' : 'bg-[hsl(var(--status-in-progress-fg))]'}`} />
               {PHASE_LABEL[room.currentPhase] || room.currentPhase} · Round {room.currentRound}/{room.totalRounds}
-            </motion.p>
+            </Motion.p>
           </AnimatePresence>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center justify-center gap-1 p-8">
-          <motion.div
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1 p-5 sm:p-8">
+          <Motion.div
             key={room.currentPhase}
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -83,10 +83,10 @@ export const LiveSession = ({
                 <p className="text-xs text-muted-foreground">remaining</p>
               </div>
             </CircularProgress>
-          </motion.div>
+          </Motion.div>
         </div>
 
-        <div className="flex shrink-0 justify-center gap-3 border-t border-border/60 p-5">
+        <div className="flex shrink-0 flex-wrap justify-center gap-3 border-t border-border/60 p-4 sm:p-5">
           <Button variant="outline" onClick={onLeave}>
             <DoorOpen className="mr-2 h-4 w-4" />
             Leave
@@ -131,7 +131,7 @@ export const LiveSession = ({
           </div>
         )}
 
-        <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-border/60 p-5">
+        <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-border/60 p-4 sm:p-5">
           <p className="section-header mb-2">participants ({room.participants.length})</p>
           <div className="divide-y divide-border/40">
             {room.participants.map((p) => (
@@ -141,7 +141,7 @@ export const LiveSession = ({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 min-w-0 flex-col gap-2 overflow-hidden">
+      <div className="flex h-[min(72dvh,640px)] min-h-[500px] min-w-0 flex-col gap-2 overflow-hidden lg:h-full lg:min-h-0">
         <div className="flex shrink-0 gap-1 rounded-full bg-muted/70 p-1">
           <button
             type="button"

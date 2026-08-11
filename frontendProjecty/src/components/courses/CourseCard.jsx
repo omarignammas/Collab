@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Calendar, User, Youtube, Users } from 'lucide-react'
 import {
@@ -27,23 +27,12 @@ import {
 } from "../ui/alert-dialog"
 
 export const CourseCard = ({ course, onDelete }) => {
-  const [progress, setProgress] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  useEffect(() => {
-    const fetchProgress = async () => {
-      try {
-        const data = await courseService.getCourseProgress(course.id)
-        setProgress(data)
-      } catch (error) {
-        console.error('Error fetching progress:', error)
-      }
-    }
-    fetchProgress()
-  }, [course.id])
+  const progress = course.progressData
 
   const handleDelete = async () => {
     setDeleting(true)

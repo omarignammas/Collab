@@ -4,6 +4,7 @@ dist/
 .gitignore
 *.md
 *.log
+.DS_Store
 .env.local
 .env.*.local
 src-tauri/

@@ -43,7 +43,7 @@ export const RoomLobby = ({ room, isHost, userEmail, onStart, onChatModeChange, 
   return (
     <div className="mx-auto max-w-xl">
       <div className="rounded-2xl border border-border/60 bg-card shadow-ios">
-        <div className="flex items-center justify-between gap-3 border-b border-border/60 p-5">
+        <div className="flex flex-col items-start justify-between gap-4 border-b border-border/60 p-4 sm:flex-row sm:items-center sm:p-5">
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Timer className="h-4 w-4 shrink-0" />
@@ -57,20 +57,20 @@ export const RoomLobby = ({ room, isHost, userEmail, onStart, onChatModeChange, 
               </p>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
             {room.locked && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Lock className="h-3.5 w-3.5" /> Locked
               </span>
             )}
-            <Button size="sm" variant="outline" onClick={handleCopyLink}>
+            <Button size="sm" variant="outline" onClick={handleCopyLink} className="max-w-full">
               <Copy className="mr-2 h-3.5 w-3.5" />
               Copy Link
             </Button>
           </div>
         </div>
 
-        <div className="border-b border-border/60 p-5">
+        <div className="border-b border-border/60 p-4 sm:p-5">
           <p className="section-header mb-3">round settings</p>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
             <span className="text-muted-foreground">Work <span className="font-numeric font-medium text-foreground">{room.workMinutes}m</span></span>
@@ -89,8 +89,8 @@ export const RoomLobby = ({ room, isHost, userEmail, onStart, onChatModeChange, 
           </div>
         </div>
 
-        <div className="p-5">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="p-4 sm:p-5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="section-header">in lobby ({room.participants.length})</p>
             {isHost && (
               <Button size="sm" variant="outline" onClick={() => setIsInviteOpen(true)}>
@@ -106,7 +106,7 @@ export const RoomLobby = ({ room, isHost, userEmail, onStart, onChatModeChange, 
           </div>
         </div>
 
-        <div className="flex justify-center border-t border-border/60 p-5">
+        <div className="flex justify-center border-t border-border/60 p-4 sm:p-5">
           {isHost ? (
             <Button size="lg" onClick={onStart} disabled={!connected}>
               <Play className="mr-2 h-4 w-4" />

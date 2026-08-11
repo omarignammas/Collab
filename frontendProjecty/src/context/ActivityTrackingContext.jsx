@@ -51,7 +51,13 @@ export const ActivityTrackingProvider = ({ children }) => {
       lastSampleRef.current = now;
       setCurrentApp(app);
       if (app && app.bundleId !== 'com.collab.desktop') {
-        setEntries(recordActivity(app, elapsedSeconds, new Date(), focusContextRef.current));
+        setEntries(recordActivity(
+          app,
+          elapsedSeconds,
+          new Date(),
+          focusContextRef.current,
+          () => setEntries(readActivityEntries()),
+        ));
       }
     };
 
