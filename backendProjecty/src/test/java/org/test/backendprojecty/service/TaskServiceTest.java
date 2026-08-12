@@ -21,6 +21,7 @@ import org.test.backendprojecty.entity.CourseMember;
 import org.test.backendprojecty.entity.MemberStatus;
 import org.test.backendprojecty.entity.NotificationType;
 import org.test.backendprojecty.entity.Task;
+import org.test.backendprojecty.entity.TaskStatus;
 import org.test.backendprojecty.entity.User;
 import org.test.backendprojecty.exception.BadRequestException;
 import org.test.backendprojecty.exception.ResourceNotFoundException;
@@ -95,6 +96,7 @@ class TaskServiceTest {
                 .description("Test Description")
                 .dueDate(LocalDate.now().plusDays(7))
                 .completed(false)
+                .status(TaskStatus.TODO)
                 .user(user)
                 .course(course)
                 .build();
@@ -193,6 +195,7 @@ class TaskServiceTest {
         assertNotNull(response);
         assertTrue(task.isCompleted());
         assertNotNull(task.getCompletedAt());
+        assertEquals(TaskStatus.DONE, task.getStatus());
         verify(taskRepository).save(task);
     }
 
@@ -206,6 +209,51 @@ class TaskServiceTest {
 
         taskService.markTaskAsCompleted(1L);
 
+        assertFalse(task.isCompleted());
+        assertNull(task.getCompletedAt());
+        assertEquals(TaskStatus.TODO, task.getStatus());
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void updateTaskStatus_ToInProgress_PersistsWithoutCompleting() {
+        when(taskRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(task));
+        when(taskRepository.save(task)).thenReturn(task);
+        when(taskMapper.toResponse(task)).thenReturn(taskResponse);
+
+        taskService.updateTaskStatus(1L, TaskStatus.IN_PROGRESS);
+
+        assertEquals(TaskStatus.IN_PROGRESS, task.getStatus());
+        assertFalse(task.isCompleted());
+        assertNull(task.getCompletedAt());
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void updateTaskStatus_ToDone_SynchronizesCompletion() {
+        when(taskRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(task));
+        when(taskRepository.save(task)).thenReturn(task);
+        when(taskMapper.toResponse(task)).thenReturn(taskResponse);
+
+        taskService.updateTaskStatus(1L, TaskStatus.DONE);
+
+        assertEquals(TaskStatus.DONE, task.getStatus());
+        assertTrue(task.isCompleted());
+        assertNotNull(task.getCompletedAt());
+    }
+
+    @Test
+    void updateTaskStatus_ReopenDoneTask_ClearsCompletion() {
+        task.setStatus(TaskStatus.DONE);
+        task.setCompleted(true);
+        task.setCompletedAt(LocalDateTime.now());
+        when(taskRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(task));
+        when(taskRepository.save(task)).thenReturn(task);
+        when(taskMapper.toResponse(task)).thenReturn(taskResponse);
+
+        taskService.updateTaskStatus(1L, TaskStatus.TODO);
+
+        assertEquals(TaskStatus.TODO, task.getStatus());
         assertFalse(task.isCompleted());
         assertNull(task.getCompletedAt());
         verifyNoInteractions(notificationService);

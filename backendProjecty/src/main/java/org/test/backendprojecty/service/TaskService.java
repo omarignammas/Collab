@@ -15,6 +15,7 @@ import org.test.backendprojecty.entity.MemberStatus;
 import org.test.backendprojecty.entity.NotificationType;
 import org.test.backendprojecty.entity.Task;
 import org.test.backendprojecty.entity.TaskPriority;
+import org.test.backendprojecty.entity.TaskStatus;
 import org.test.backendprojecty.entity.TaskType;
 import org.test.backendprojecty.entity.User;
 import org.test.backendprojecty.exception.BadRequestException;
@@ -95,6 +96,7 @@ public class TaskService {
                 .description(request.getDescription())
                 .dueDate(request.getDueDate())
                 .completed(false)
+                .status(TaskStatus.TODO)
                 .type(request.getType() != null ? request.getType() : TaskType.PERSONAL)
                 .priority(request.getPriority() != null ? request.getPriority() : TaskPriority.MEDIUM)
                 .user(assignee)
@@ -179,9 +181,38 @@ public class TaskService {
         boolean nowCompleted = !task.isCompleted();
         task.setCompleted(nowCompleted);
         task.setCompletedAt(nowCompleted ? LocalDateTime.now() : null);
+        task.setStatus(nowCompleted ? TaskStatus.DONE : TaskStatus.TODO);
         task = taskRepository.save(task);
 
         if (nowCompleted) {
+            notifyIfCourseCompleted(task, currentUser);
+            notifyIfStreakMilestone(currentUser);
+        }
+
+        return taskMapper.toResponse(task);
+    }
+
+    @Transactional
+    public TaskResponse updateTaskStatus(Long taskId, TaskStatus status) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        Task task = taskRepository.findByIdAndUserId(taskId, currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
+
+        boolean wasCompleted = task.isCompleted();
+        boolean nowCompleted = status == TaskStatus.DONE;
+
+        task.setStatus(status);
+        task.setCompleted(nowCompleted);
+        LocalDateTime completedAt = null;
+        if (nowCompleted) {
+            completedAt = wasCompleted && task.getCompletedAt() != null
+                    ? task.getCompletedAt()
+                    : LocalDateTime.now();
+        }
+        task.setCompletedAt(completedAt);
+        task = taskRepository.save(task);
+
+        if (nowCompleted && !wasCompleted) {
             notifyIfCourseCompleted(task, currentUser);
             notifyIfStreakMilestone(currentUser);
         }

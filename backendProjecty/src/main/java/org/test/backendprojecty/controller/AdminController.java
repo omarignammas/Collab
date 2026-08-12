@@ -9,6 +9,7 @@ import org.test.backendprojecty.dtos.request.PaginationRequest;
 import org.test.backendprojecty.dtos.response.AdminStatsResponse;
 import org.test.backendprojecty.dtos.response.PagingResult;
 import org.test.backendprojecty.dtos.response.UserResponse;
+import org.test.backendprojecty.dtos.response.WaitlistEntryResponse;
 import org.test.backendprojecty.service.AdminService;
 
 @RestController
@@ -45,9 +46,25 @@ public class AdminController {
         return ResponseEntity.ok(adminService.suspendUser(userId));
     }
 
+    @PatchMapping("/users/{userId}/reactivate")
+    public ResponseEntity<UserResponse> reactivateUser(@PathVariable Long userId) {
+        return ResponseEntity.ok(adminService.reactivateUser(userId));
+    }
+
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
         adminService.deleteUser(userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/waitlist")
+    public ResponseEntity<PagingResult<WaitlistEntryResponse>> getWaitlist(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(required = false) Sort.Direction direction
+    ) {
+        PaginationRequest request = new PaginationRequest(page, size, sortField, direction);
+        return ResponseEntity.ok(adminService.listWaitlist(request));
     }
 }

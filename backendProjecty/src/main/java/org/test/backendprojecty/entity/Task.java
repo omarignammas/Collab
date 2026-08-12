@@ -39,6 +39,13 @@ public class Task {
     @Builder.Default
     private boolean completed = false;
 
+    // Nullable at the database level so Hibernate can add this column safely
+    // for existing installations. Legacy null values are exposed as TODO by
+    // TaskMapper and become explicit as soon as the task is moved.
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private TaskStatus status = TaskStatus.TODO;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime completedAt;
 

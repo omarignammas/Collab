@@ -8,6 +8,7 @@ import EditTaskDialog from './EditTaskDialog';
 import taskService from '../../services/taskService';
 import { format } from 'date-fns';
 import { isOverdueTask, parseLocalDate, overdueHours, formatOverdueGap } from '../../lib/taskDates';
+import { getTaskStatus, TASK_STATUS } from '../../lib/taskStatus';
 import { useAuth } from '../../hooks/useAuth';
 import {
   AlertDialog,
@@ -79,11 +80,12 @@ export const TaskItem = ({ task, onTaskUpdated, onTaskDeleted }) => {
   };
 
   const isOverdue = isOverdueTask(task);
-  const statusPill = task.completed
-    ? { label: 'Done', className: 'pill-done' }
-    : isOverdue
-      ? { label: 'Overdue', className: 'pill-overdue' }
-      : { label: 'In Progress', className: 'pill-in-progress' };
+  const taskStatus = getTaskStatus(task);
+  const statusPill = {
+    [TASK_STATUS.TODO]: { label: 'To Do', className: 'pill-not-started' },
+    [TASK_STATUS.IN_PROGRESS]: { label: 'In Progress', className: 'pill-in-progress' },
+    [TASK_STATUS.DONE]: { label: 'Done', className: 'pill-done' },
+  }[taskStatus];
 
   return (
     <>

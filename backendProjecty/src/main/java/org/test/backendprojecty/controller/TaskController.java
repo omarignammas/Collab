@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.test.backendprojecty.dtos.request.PaginationRequest;
 import org.test.backendprojecty.dtos.request.TaskRequest;
+import org.test.backendprojecty.dtos.request.TaskStatusUpdateRequest;
 import org.test.backendprojecty.dtos.response.PagingResult;
 import org.test.backendprojecty.dtos.response.TaskResponse;
 import org.test.backendprojecty.service.TaskService;
@@ -55,6 +56,14 @@ public class TaskController {
     @PutMapping("/{taskId}/complete")
     public ResponseEntity<TaskResponse> markTaskAsCompleted(@PathVariable Long taskId) {
         TaskResponse response = taskService.markTaskAsCompleted(taskId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{taskId}/status")
+    public ResponseEntity<TaskResponse> updateTaskStatus(
+            @PathVariable Long taskId,
+            @Valid @RequestBody TaskStatusUpdateRequest request) {
+        TaskResponse response = taskService.updateTaskStatus(taskId, request.getStatus());
         return ResponseEntity.ok(response);
     }
 

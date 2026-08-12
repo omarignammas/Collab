@@ -21,8 +21,18 @@ export const adminService = {
     return response.data;
   },
 
+  async reactivateUser(userId) {
+    const response = await api.patch(`/admin/users/${userId}/reactivate`);
+    return response.data;
+  },
+
   async deleteUser(userId) {
     await api.delete(`/admin/users/${userId}`);
+  },
+
+  async getWaitlist({ page = 1, size = 50 } = {}) {
+    const response = await api.get('/admin/waitlist', { params: { page, size, sortField: 'createdAt', direction: 'DESC' } });
+    return response.data;
   },
 };
 

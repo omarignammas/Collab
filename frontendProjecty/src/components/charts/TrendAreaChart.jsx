@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import { motion as Motion, useReducedMotion } from 'motion/react';
 
 // Single-series trend (sequential/brand hue) with crosshair + tooltip on hover.
 export const TrendAreaChart = ({ data, height = 200, valueLabel = 'completed' }) => {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(0);
   const [hoverIndex, setHoverIndex] = useState(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -64,8 +66,26 @@ export const TrendAreaChart = ({ data, height = 200, valueLabel = 'completed' })
             stroke="hsl(var(--chart-gridline))"
             strokeWidth="1"
           />
-          <path d={areaPath} fill="hsl(var(--primary))" fillOpacity="0.1" stroke="none" />
-          <path d={linePath} fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <Motion.path
+            d={areaPath}
+            fill="hsl(var(--primary))"
+            fillOpacity="0.1"
+            stroke="none"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.45, delay: 0.2 }}
+          />
+          <Motion.path
+            d={linePath}
+            fill="none"
+            stroke="hsl(var(--primary))"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
+            animate={{ opacity: 1, pathLength: 1 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          />
 
           {hovered && (
             <>

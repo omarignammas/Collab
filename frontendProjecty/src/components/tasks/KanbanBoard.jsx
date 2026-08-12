@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import TaskItem from './TaskItem';
 import taskService from '../../services/taskService';
-import { isOverdueTask } from '../../lib/taskDates';
+import { getTaskStatus, TASK_STATUS } from '../../lib/taskStatus';
+import { useToast } from '../../hooks/use-toast';
 
 const COLUMNS = [
-  { key: 'todo', label: 'to do', filter: (t) => !t.completed && !isOverdueTask(t) },
-  { key: 'in-progress', label: 'in progress', filter: (t) => !t.completed && isOverdueTask(t) },
-  { key: 'done', label: 'done', filter: (t) => t.completed },
+  { key: TASK_STATUS.TODO, label: 'to do' },
+  { key: TASK_STATUS.IN_PROGRESS, label: 'in progress' },
+  { key: TASK_STATUS.DONE, label: 'done' },
 ];
 
 export const KanbanBoard = ({ tasks, onTaskUpdated, onTaskDeleted }) => {
   const [dragOverCol, setDragOverCol] = useState(null);
+  const [movingTaskId, setMovingTaskId] = useState(null);
+  const { toast } = useToast();
 
   const handleDrop = async (e, columnKey) => {
     e.preventDefault();
@@ -19,13 +22,20 @@ export const KanbanBoard = ({ tasks, onTaskUpdated, onTaskDeleted }) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    const shouldBeCompleted = columnKey === 'done';
-    if (task.completed !== shouldBeCompleted) {
+    if (getTaskStatus(task) !== columnKey) {
+      setMovingTaskId(taskId);
       try {
-        const updated = await taskService.markTaskCompleted(taskId);
+        const updated = await taskService.updateTaskStatus(taskId, columnKey);
         onTaskUpdated(updated);
       } catch (error) {
         console.error('Error updating task via board:', error);
+        toast({
+          title: 'Could not move task',
+          description: error.response?.data?.message || 'Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setMovingTaskId(null);
       }
     }
   };
@@ -33,12 +43,11 @@ export const KanbanBoard = ({ tasks, onTaskUpdated, onTaskDeleted }) => {
   return (
     <div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Drag a card into <span className="font-medium text-foreground">Done</span> to complete it, or back out to reopen it.
-        To Do vs In Progress is based on due date — a task moves to In Progress once its deadline has passed.
+        Drag cards between columns to update their workflow. Overdue is shown separately from status.
       </p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {COLUMNS.map((col) => {
-          const colTasks = tasks.filter(col.filter);
+          const colTasks = tasks.filter((task) => getTaskStatus(task) === col.key);
           return (
             <div
               key={col.key}
@@ -65,8 +74,12 @@ export const KanbanBoard = ({ tasks, onTaskUpdated, onTaskDeleted }) => {
                 <div
                   key={task.id}
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
-                  className="cursor-grab active:cursor-grabbing"
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(task.id));
+                  }}
+                  onDragEnd={() => setDragOverCol(null)}
+                  className={`cursor-grab transition-opacity active:cursor-grabbing ${movingTaskId === task.id ? 'pointer-events-none opacity-50' : ''}`}
                 >
                   <TaskItem task={task} onTaskUpdated={onTaskUpdated} onTaskDeleted={onTaskDeleted} />
                 </div>

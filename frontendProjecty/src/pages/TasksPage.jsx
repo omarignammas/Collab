@@ -36,6 +36,14 @@ export const TasksPage = () => {
     fetchData();
   }, []);
 
+  const handleTaskUpdated = (updatedTask) => {
+    setTasks((current) => current.map((task) => (task.id === updatedTask.id ? updatedTask : task)));
+  };
+
+  const handleTaskDeleted = (taskId) => {
+    setTasks((current) => current.filter((task) => task.id !== taskId));
+  };
+
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       if (courseFilter === 'personal' && task.courseId) return false;
@@ -130,15 +138,15 @@ export const TasksPage = () => {
       ) : view === 'list' ? (
         <TaskList
           tasks={filteredTasks}
-          onTaskUpdated={fetchData}
-          onTaskDeleted={fetchData}
+          onTaskUpdated={handleTaskUpdated}
+          onTaskDeleted={handleTaskDeleted}
           emptyMessage="No tasks match these filters."
         />
       ) : (
         <KanbanBoard
           tasks={filteredTasks}
-          onTaskUpdated={fetchData}
-          onTaskDeleted={fetchData}
+          onTaskUpdated={handleTaskUpdated}
+          onTaskDeleted={handleTaskDeleted}
         />
       )}
     </div>

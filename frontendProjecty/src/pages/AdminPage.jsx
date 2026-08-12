@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Ban, Check, Clock, ShieldCheck, Users } from 'lucide-react';
+import { Ban, Check, Clock, Mail, RotateCcw, ShieldCheck, Trash2, Users } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../components/ui/alert-dialog';
 import PageHero from '../components/shared/PageHero';
 import TrendAreaChart from '../components/charts/TrendAreaChart';
 import Avatar from '../components/shared/Avatar';
@@ -38,18 +49,21 @@ export const AdminPage = () => {
   const { toast } = useToast();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
+  const [waitlist, setWaitlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyUserId, setBusyUserId] = useState(null);
 
   const loadAdminData = async () => {
       setLoading(true);
       try {
-        const [statsResult, usersResult] = await Promise.all([
+        const [statsResult, usersResult, waitlistResult] = await Promise.all([
           adminService.getStats(),
           adminService.getUsers({ page: 1, size: 50 }),
+          adminService.getWaitlist({ page: 1, size: 50 }),
         ]);
         setStats(statsResult);
         setUsers(usersResult.content);
+        setWaitlist(waitlistResult.content);
       } catch (error) {
         console.error('Error fetching admin data:', error);
       } finally {
@@ -101,6 +115,42 @@ export const AdminPage = () => {
     }
   };
 
+  const handleReactivate = async (targetUser) => {
+    setBusyUserId(targetUser.id);
+    try {
+      const updatedUser = await adminService.reactivateUser(targetUser.id);
+      replaceUser(updatedUser);
+      await loadAdminData();
+      toast({ title: 'User reactivated', description: `${targetUser.firstName} can sign in again.` });
+    } catch (error) {
+      toast({
+        title: "Couldn't reactivate user",
+        description: error.response?.data?.message || 'Something went wrong.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const handleDelete = async (targetUser) => {
+    setBusyUserId(targetUser.id);
+    try {
+      await adminService.deleteUser(targetUser.id);
+      setUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
+      await loadAdminData();
+      toast({ title: 'Account deleted', description: `${targetUser.firstName}'s account has been removed.` });
+    } catch (error) {
+      toast({
+        title: "Couldn't delete user",
+        description: error.response?.data?.message || 'Something went wrong.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
   const trendData = (stats?.signupsByDay || []).map((d) => ({
     label: format(new Date(d.date), 'MMM d'),
     fullLabel: format(new Date(d.date), 'EEEE, MMM d'),
@@ -122,10 +172,11 @@ export const AdminPage = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <StatTile icon={Users} label="Active users" value={stats.totalUsers} />
             <StatTile icon={Clock} label="Pending requests" value={stats.pendingUsers || 0} />
             <StatTile icon={Ban} label="Suspended" value={stats.suspendedUsers || 0} />
+            <StatTile icon={Mail} label="Waitlist signups" value={stats.waitlistCount || 0} />
           </div>
 
           <Card className="border-border/80 bg-card">
@@ -185,10 +236,79 @@ export const AdminPage = () => {
                           {busyUserId === u.id ? 'Suspending...' : 'Suspend'}
                         </Button>
                       )}
+                      {u.id !== currentUser?.id && u.role !== 'ADMIN' && u.accountStatus === 'SUSPENDED' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReactivate(u)}
+                          disabled={busyUserId === u.id}
+                        >
+                          <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                          {busyUserId === u.id ? 'Reactivating...' : 'Reactivate'}
+                        </Button>
+                      )}
+                      {u.id !== currentUser?.id && u.role !== 'ADMIN' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              disabled={busyUserId === u.id}
+                              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete {u.firstName}&apos;s account?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This scrubs their name, email, and avatar, and permanently blocks them from signing in. It can&apos;t be
+                                undone, and their email address won&apos;t be reusable for a new account.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(u)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete account
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/80 bg-card">
+            <CardContent className="p-5">
+              <p className="section-header mb-4">desktop app waitlist ({waitlist.length})</p>
+              {waitlist.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No signups yet — the desktop waitlist form is on the landing page.</p>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {waitlist.map((entry) => (
+                    <div key={entry.id} className="flex items-center gap-3 py-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Mail className="h-4 w-4" />
+                      </span>
+                      <p className="min-w-0 flex-1 truncate text-sm text-foreground">{entry.email}</p>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {format(new Date(entry.createdAt), 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

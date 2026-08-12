@@ -3,6 +3,7 @@ package org.test.backendprojecty.mapper;
 import org.springframework.stereotype.Component;
 import org.test.backendprojecty.dtos.response.TaskResponse;
 import org.test.backendprojecty.entity.Task;
+import org.test.backendprojecty.entity.TaskStatus;
 
 @Component
 public class TaskMapper {
@@ -15,6 +16,9 @@ public class TaskMapper {
                 .dueDate(task.getDueDate())
                 .completed(task.isCompleted())
                 .completedAt(task.getCompletedAt())
+                .status(task.isCompleted()
+                        ? TaskStatus.DONE
+                        : task.getStatus() != null ? task.getStatus() : TaskStatus.TODO)
                 .courseId(task.getCourse() != null ? task.getCourse().getId() : null)
                 .courseTitle(task.getCourse() != null ? task.getCourse().getTitle() : null)
                 .type(task.getType())

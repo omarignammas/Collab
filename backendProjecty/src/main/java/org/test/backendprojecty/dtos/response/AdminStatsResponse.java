@@ -16,5 +16,6 @@ public class AdminStatsResponse {
     private long newUsersToday;
     private long pendingUsers;
     private long suspendedUsers;
+    private long waitlistCount;
     private List<DailySignupResponse> signupsByDay;
 }

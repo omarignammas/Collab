@@ -18,6 +18,7 @@ import org.test.backendprojecty.dtos.request.TaskRequest;
 import org.test.backendprojecty.dtos.response.PagingResult;
 import org.test.backendprojecty.dtos.response.TaskResponse;
 import org.test.backendprojecty.entity.TaskPriority;
+import org.test.backendprojecty.entity.TaskStatus;
 import org.test.backendprojecty.entity.TaskType;
 import org.test.backendprojecty.security.JwtAuthenticationFilter;
 import org.test.backendprojecty.service.TaskService;
@@ -247,6 +248,41 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.completed").value(true));
 
         verify(taskService, times(1)).markTaskAsCompleted(1L);
+    }
+
+    @Test
+    @WithMockUser
+    void updateTaskStatus_Success() throws Exception {
+        TaskResponse inProgressTask = TaskResponse.builder()
+                .id(1L)
+                .title("Test Task")
+                .status(TaskStatus.IN_PROGRESS)
+                .completed(false)
+                .build();
+
+        when(taskService.updateTaskStatus(1L, TaskStatus.IN_PROGRESS)).thenReturn(inProgressTask);
+
+        mockMvc.perform(put("/api/v1/tasks/1/status")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"IN_PROGRESS\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.completed").value(false));
+
+        verify(taskService).updateTaskStatus(1L, TaskStatus.IN_PROGRESS);
+    }
+
+    @Test
+    @WithMockUser
+    void updateTaskStatus_MissingStatus_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(put("/api/v1/tasks/1/status")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(taskService, never()).updateTaskStatus(anyLong(), any());
     }
 
     @Test

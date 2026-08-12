@@ -1,10 +1,14 @@
 import { format } from 'date-fns';
+import { motion as Motion, useReducedMotion } from 'motion/react';
 
 // `data` is oldest→newest: { date, active, inCurrentStreak, tasksCompleted,
 // hoursWorked, courses: [{ title, percentage }] }. Full-height bar = a task was
 // completed that day; the trailing run of active days counting back from today
 // (or yesterday, if today's still open) is highlighted as the current streak.
-export const StreakBarChart = ({ data }) => (
+export const StreakBarChart = ({ data }) => {
+  const reduceMotion = useReducedMotion();
+
+  return (
   <div className="flex h-[140px] items-end gap-1 pt-8">
     {data.map((day, i) => {
       const isFirst = i === 0;
@@ -16,7 +20,7 @@ export const StreakBarChart = ({ data }) => (
           : 'left-1/2 -translate-x-1/2';
       return (
       <div key={day.date} className="group relative h-full flex-1">
-        <div
+        <Motion.div
           tabIndex={0}
           role="img"
           aria-label={`${day.tasksCompleted} tasks completed, ${day.hoursWorked} hours worked on ${format(new Date(day.date), 'MMM d, yyyy')}`}
@@ -27,7 +31,9 @@ export const StreakBarChart = ({ data }) => (
                 ? 'bg-[hsl(var(--chart-1)/0.4)]'
                 : 'bg-muted'
           }`}
-          style={{ height: day.active ? '100%' : '10%' }}
+          initial={reduceMotion ? false : { height: '0%', opacity: 0 }}
+          animate={{ height: day.active ? '100%' : '10%', opacity: 1 }}
+          transition={{ duration: 0.42, delay: Math.min(0.65, i * 0.025), ease: 'easeOut' }}
         />
 
         <div className={`pointer-events-none absolute bottom-full ${tooltipPositionClass} z-10 mb-2 whitespace-nowrap rounded-lg border border-border/80 bg-popover px-3 py-2 text-center opacity-0 shadow-md transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100`}>
@@ -51,6 +57,7 @@ export const StreakBarChart = ({ data }) => (
       );
     })}
   </div>
-);
+  );
+};
 
 export default StreakBarChart;

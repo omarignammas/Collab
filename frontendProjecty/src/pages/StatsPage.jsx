@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, addDays, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import { Flame, CheckCircle2, Timer, ListTodo, BarChart3 } from 'lucide-react';
+import { motion as Motion, useReducedMotion } from 'motion/react';
 import { Card, CardContent } from '../components/ui/card';
 import taskService from '../services/taskService';
 import courseService from '../services/courseService';
@@ -64,6 +65,7 @@ const StatTile = (props) => {
 
 export const StatsPage = () => {
   const { user } = useAuth();
+  const reduceMotion = useReducedMotion();
   const [tasks, setTasks] = useState([]);
   const [courses, setCourses] = useState([]);
   const [focusRooms, setFocusRooms] = useState([]);
@@ -299,14 +301,19 @@ export const StatsPage = () => {
       <PageHero icon={BarChart3} title="Stats" subtitle="How the term's actually going." />
 
       {loading ? (
-        <div className="space-y-6">
+        <Motion.div
+          className="space-y-6"
+          initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
           <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-28 animate-pulse rounded-xl border border-border/80 bg-card" />
             ))}
           </div>
           <div className="h-64 animate-pulse rounded-xl border border-border/80 bg-card" />
-        </div>
+        </Motion.div>
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">

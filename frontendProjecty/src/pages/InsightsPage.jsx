@@ -1,4 +1,5 @@
 import { createElement } from 'react';
+import { motion as Motion, useReducedMotion } from 'motion/react';
 import {
   Activity,
   AppWindow,
@@ -29,17 +30,21 @@ const CATEGORY_STYLES = {
   Other: 'bg-muted-foreground',
 };
 
-const ActivityCell = ({ day, maximum }) => {
+const ActivityCell = ({ day, maximum, index }) => {
+  const reduceMotion = useReducedMotion();
   const intensity = day.seconds ? Math.max(0.2, day.seconds / maximum) : 0;
   return (
-    <span
+    <Motion.span
       className="group relative aspect-square min-h-2.5 rounded-[3px] bg-muted"
       style={day.seconds ? { backgroundColor: `hsl(var(--primary) / ${0.18 + (intensity * 0.82)})` } : undefined}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.45 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, delay: Math.min(0.7, index * 0.012) }}
     >
       <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-ios-sm group-hover:block">
         {new Date(`${day.day}T12:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })} · {formatTrackedTime(day.seconds)}
       </span>
-    </span>
+    </Motion.span>
   );
 };
 
@@ -55,7 +60,7 @@ const FocusHeatmap = ({ days }) => {
           <span>M</span><span /><span>W</span><span /><span>F</span><span /><span>S</span>
         </div>
         <div className="grid min-w-0 flex-1 grid-flow-col grid-rows-7 gap-1">
-          {days.map((day) => <ActivityCell key={day.day} day={day} maximum={maximum} />)}
+          {days.map((day, index) => <ActivityCell key={day.day} day={day} maximum={maximum} index={index} />)}
         </div>
       </div>
     </div>
@@ -103,6 +108,7 @@ const getPerformanceSignals = (summary, communication) => [
 ];
 
 const PerformanceRadar = ({ signals }) => {
+  const reduceMotion = useReducedMotion();
   const center = 165;
   const radius = 101;
   const labelRadius = 139;
@@ -128,11 +134,14 @@ const PerformanceRadar = ({ signals }) => {
     .join(' ');
 
   return (
-    <svg
+    <Motion.svg
       className="mx-auto h-auto w-full max-w-[350px] overflow-visible"
       viewBox="0 0 330 330"
       role="img"
       aria-label={`Seven-day performance profile: ${signals.map((signal) => `${signal.label} ${signal.value}`).join(', ')}`}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.86 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
     >
       {[25, 50, 75, 100].map((level) => (
         <polygon key={level} points={polygonPoints(level)} className="fill-transparent stroke-border/80" strokeWidth="1" />
@@ -157,7 +166,7 @@ const PerformanceRadar = ({ signals }) => {
         return <circle key={signal.label} cx={point.x} cy={point.y} r="3.5" className="fill-card stroke-primary" strokeWidth="2.5" />;
       })}
       <circle cx={center} cy={center} r="3" className="fill-primary" />
-    </svg>
+    </Motion.svg>
   );
 };
 
@@ -177,7 +186,12 @@ const TopAppRow = ({ app }) => (
       <p className="truncate text-[11px] text-muted-foreground">{app.category} · {formatTrackedTime(app.seconds)}</p>
     </div>
     <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-      <div className={`h-full rounded-full ${CATEGORY_STYLES[app.category] || CATEGORY_STYLES.Other}`} style={{ width: `${app.percentage}%` }} />
+      <Motion.div
+        className={`h-full rounded-full ${CATEGORY_STYLES[app.category] || CATEGORY_STYLES.Other}`}
+        initial={{ width: 0 }}
+        animate={{ width: `${app.percentage}%` }}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+      />
     </div>
     <span className="text-right font-numeric text-xs font-semibold text-foreground">{app.percentage}%</span>
   </div>
@@ -287,7 +301,7 @@ export const InsightsPage = () => {
                     <div key={category.name} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2">
                       <span className="flex min-w-0 items-center gap-2 text-sm text-foreground"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${CATEGORY_STYLES[category.name] || CATEGORY_STYLES.Other}`} /><span className="truncate">{category.name}</span></span>
                       <span className="font-numeric text-xs text-muted-foreground">{formatTrackedTime(category.seconds)} · {category.percentage}%</span>
-                      <div className="col-span-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${CATEGORY_STYLES[category.name] || CATEGORY_STYLES.Other}`} style={{ width: `${category.percentage}%` }} /></div>
+                      <div className="col-span-2 h-1.5 overflow-hidden rounded-full bg-muted"><Motion.div className={`h-full rounded-full ${CATEGORY_STYLES[category.name] || CATEGORY_STYLES.Other}`} initial={{ width: 0 }} animate={{ width: `${category.percentage}%` }} transition={{ duration: 0.55, delay: 0.12, ease: 'easeOut' }} /></div>
                     </div>
                   )) : <p className="py-10 text-center text-sm text-muted-foreground">No category activity yet.</p>}
                 </div>

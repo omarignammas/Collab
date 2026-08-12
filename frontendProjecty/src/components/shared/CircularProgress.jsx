@@ -1,4 +1,6 @@
 
+import { motion as Motion, useReducedMotion } from 'motion/react';
+
 const CHART_VARS = {
   blue: '--chart-1',
   purple: '--chart-2',
@@ -7,6 +9,8 @@ const CHART_VARS = {
 };
 
 export const CircularProgress = ({ percentage, size = 120, strokeWidth = 10, color = "blue", children }) => {
+
+  const reduceMotion = useReducedMotion();
 
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -21,7 +25,7 @@ export const CircularProgress = ({ percentage, size = 120, strokeWidth = 10, col
     <div className="relative inline-flex items-center justify-center">
       <svg width={size} height={size} className="-rotate-90 transform">
         {/* Background circle */}
-        <circle
+        <Motion.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -39,8 +43,9 @@ export const CircularProgress = ({ percentage, size = 120, strokeWidth = 10, col
           fill="none"
           strokeLinecap="round"
           strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-1000 ease-out"
+          initial={reduceMotion ? false : { strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.9, ease: 'easeOut' }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
