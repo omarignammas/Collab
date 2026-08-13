@@ -36,6 +36,8 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     List<Task> findByUserIdAndCompletedTrueAndCompletedAtAfter(Long userId, LocalDateTime completedAfter);
 
+    List<Task> findByUserIdAndCompletedTrueAndCompletedAtBetween(Long userId, LocalDateTime start, LocalDateTime end);
+
     @Query("select t.completedAt from Task t where t.user.id = :userId and t.completed = true and t.completedAt is not null")
     List<LocalDateTime> findCompletedTimestampsByUserId(@Param("userId") Long userId);
 

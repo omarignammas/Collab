@@ -16,6 +16,8 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> 
 
     List<QuizAttempt> findByUserIdAndCompletedAtAfter(Long userId, LocalDateTime completedAfter);
 
+    List<QuizAttempt> findByUserIdAndCompletedAtBetween(Long userId, LocalDateTime start, LocalDateTime end);
+
     // Bulk delete only (cascade cleanup when a quiz/summary is deleted) — does
     // not return attempt data, so it doesn't reopen the cross-user leak the
     // finder above is deliberately scoped to avoid.

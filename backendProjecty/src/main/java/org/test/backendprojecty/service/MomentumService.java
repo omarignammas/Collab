@@ -63,20 +63,28 @@ public class MomentumService {
 
     public MomentumResponse getMomentumFor(User user) {
         LocalDate weekStart = LocalDate.now().with(DayOfWeek.MONDAY);
-        LocalDateTime startOfWeek = weekStart.atStartOfDay();
-        Instant startOfWeekInstant = startOfWeek.atZone(ZoneId.systemDefault()).toInstant();
+        return getMomentumForWeek(user, weekStart);
+    }
 
-        List<Task> completedTasks = taskRepository.findByUserIdAndCompletedTrueAndCompletedAtAfter(user.getId(), startOfWeek);
+    public MomentumResponse getMomentumForWeek(User user, LocalDate weekStart) {
+        LocalDateTime startOfWeek = weekStart.atStartOfDay();
+        LocalDateTime endOfWeek = weekStart.plusWeeks(1).atStartOfDay();
+        Instant startOfWeekInstant = startOfWeek.atZone(ZoneId.systemDefault()).toInstant();
+        Instant endOfWeekInstant = endOfWeek.atZone(ZoneId.systemDefault()).toInstant();
+
+        List<Task> completedTasks = taskRepository.findByUserIdAndCompletedTrueAndCompletedAtBetween(user.getId(), startOfWeek, endOfWeek);
         int completedCount = completedTasks.size();
-        int focusMinutes = focusTimeEntryRepository.findByUserIdAndEarnedAtAfter(user.getId(), startOfWeekInstant).stream()
+        var focusEntries = focusTimeEntryRepository.findByUserIdAndEarnedAtBetween(user.getId(), startOfWeekInstant, endOfWeekInstant);
+        var quizAttemptsThisWeek = quizAttemptRepository.findByUserIdAndCompletedAtBetween(user.getId(), startOfWeek, endOfWeek);
+        int focusMinutes = focusEntries.stream()
                 .mapToInt(entry -> entry.getMinutesFocused())
                 .sum();
-        int quizAttempts = quizAttemptRepository.findByUserIdAndCompletedAtAfter(user.getId(), startOfWeek).size();
+        int quizAttempts = quizAttemptsThisWeek.size();
 
         Set<LocalDate> activeDays = new HashSet<>(completedTasks.stream().map(task -> task.getCompletedAt().toLocalDate()).toList());
-        focusTimeEntryRepository.findByUserIdAndEarnedAtAfter(user.getId(), startOfWeekInstant)
+        focusEntries
                 .forEach(entry -> activeDays.add(entry.getEarnedAt().atZone(ZoneId.systemDefault()).toLocalDate()));
-        quizAttemptRepository.findByUserIdAndCompletedAtAfter(user.getId(), startOfWeek)
+        quizAttemptsThisWeek
                 .forEach(attempt -> activeDays.add(attempt.getCompletedAt().toLocalDate()));
 
         int taskPoints = Math.min(50, completedCount * 17);

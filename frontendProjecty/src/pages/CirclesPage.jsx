@@ -1,5 +1,23 @@
 import { createElement, useEffect, useMemo, useState } from 'react';
-import { Check, CheckCircle2, Clock3, Flame, Plus, Settings2, Target, UsersRound, X } from 'lucide-react';
+import {
+  Award,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Flag,
+  Flame,
+  HeartHandshake,
+  LockKeyhole,
+  Medal,
+  Plus,
+  RotateCcw,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  UsersRound,
+  X,
+} from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -19,74 +37,255 @@ const formatMinutes = (minutes = 0) => {
 };
 
 const Metric = ({ label, value, detail, icon, color }) => (
-  <div className="min-w-0 border-l border-border/60 px-5 first:border-l-0 first:pl-0">
-    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">{createElement(icon, { className: `h-3.5 w-3.5 ${color}` })}{label}</div>
-    <p className="mt-2 font-numeric text-2xl font-bold text-foreground">{value}</p>
+  <div className="min-w-0 border-l border-border/60 px-4 first:border-l-0 first:pl-0 sm:px-5">
+    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+      {createElement(icon, { className: `h-3.5 w-3.5 ${color}` })}
+      <span className="truncate">{label}</span>
+    </div>
+    <p className="mt-2 font-numeric text-xl font-bold text-foreground sm:text-2xl">{value}</p>
     <p className="mt-1 truncate text-[11px] text-muted-foreground">{detail}</p>
   </div>
 );
 
-const MemberRow = ({ member, maxScore }) => {
-  const momentum = member.momentum;
-  const score = momentum?.score || 0;
-  const barWidth = maxScore ? Math.max(4, Math.round((score / maxScore) * 100)) : 0;
+const recognitionMeta = {
+  consistent: { icon: Flame, color: 'text-primary', surface: 'bg-primary/10' },
+  teammate: { icon: UsersRound, color: 'text-[hsl(var(--chart-3))]', surface: 'bg-[hsl(var(--chart-3))]/10' },
+  comeback: { icon: RotateCcw, color: 'text-[hsl(var(--chart-1))]', surface: 'bg-[hsl(var(--chart-1))]/10' },
+  helpful: { icon: HeartHandshake, color: 'text-[hsl(var(--chart-4))]', surface: 'bg-[hsl(var(--chart-4))]/10' },
+  finisher: { icon: Flag, color: 'text-[hsl(var(--chart-2))]', surface: 'bg-[hsl(var(--chart-2))]/10' },
+};
+
+const recognitionTitles = [
+  ['consistent', 'Most consistent'],
+  ['teammate', 'Best teammate'],
+  ['comeback', 'Biggest comeback'],
+  ['helpful', 'Most helpful'],
+  ['finisher', 'Strongest finisher'],
+];
+
+const badgeMeta = {
+  'founding-circle': { icon: Sparkles, color: 'text-primary', surface: 'bg-primary/10' },
+  'full-circle': { icon: UsersRound, color: 'text-[hsl(var(--chart-3))]', surface: 'bg-[hsl(var(--chart-3))]/10' },
+  'focus-pact': { icon: Target, color: 'text-[hsl(var(--chart-1))]', surface: 'bg-[hsl(var(--chart-1))]/10' },
+  'finish-line': { icon: Flag, color: 'text-[hsl(var(--chart-2))]', surface: 'bg-[hsl(var(--chart-2))]/10' },
+  'learning-loop': { icon: HeartHandshake, color: 'text-[hsl(var(--chart-4))]', surface: 'bg-[hsl(var(--chart-4))]/10' },
+  'momentum-70': { icon: Medal, color: 'text-primary', surface: 'bg-primary/10' },
+};
+
+const getFallbackRecognitions = () => recognitionTitles.map(([key, title]) => ({
+  key,
+  title,
+  unlocked: false,
+  reason: "Waiting for this week's shared signal.",
+}));
+
+const getFallbackBadges = (circle) => [
+  { key: 'founding-circle', name: 'Founding Circle', description: 'Created a trusted space in Collab.', earned: true, progress: 1, goal: 1 },
+  { key: 'full-circle', name: 'Full Circle', description: 'Bring three trusted people into the rhythm.', earned: circle.activeMemberCount >= 3, progress: Math.min(circle.activeMemberCount, 3), goal: 3 },
+  { key: 'focus-pact', name: 'Focus Pact', description: 'Protect two collective focus hours in one week.', earned: circle.focusMinutesThisWeek >= 120, progress: Math.min(circle.focusMinutesThisWeek, 120), goal: 120 },
+  { key: 'finish-line', name: 'Finish Line', description: 'Complete five commitments together in one week.', earned: circle.completedTasksThisWeek >= 5, progress: Math.min(circle.completedTasksThisWeek, 5), goal: 5 },
+  { key: 'learning-loop', name: 'Learning Loop', description: 'Complete five review sessions in one week.', earned: circle.quizAttemptsThisWeek >= 5, progress: Math.min(circle.quizAttemptsThisWeek, 5), goal: 5 },
+  { key: 'momentum-70', name: 'Momentum 70', description: 'Reach 70% collective momentum in one week.', earned: circle.collectiveMomentum >= 70, progress: Math.min(circle.collectiveMomentum, 70), goal: 70 },
+];
+
+const TeamPulse = ({ circle }) => {
+  const memberGoal = Math.max(circle.activeMemberCount, 1) * 5;
+  const signals = [
+    { label: 'Focus pact', value: formatMinutes(circle.focusMinutesThisWeek), progress: Math.min(100, Math.round((circle.focusMinutesThisWeek / 120) * 100)), color: 'bg-primary' },
+    { label: 'Commitments finished', value: circle.completedTasksThisWeek, progress: Math.min(100, Math.round((circle.completedTasksThisWeek / 5) * 100)), color: 'bg-[hsl(var(--chart-3))]' },
+    { label: 'Active-day rhythm', value: circle.activeDaysThisWeek, progress: Math.min(100, Math.round((circle.activeDaysThisWeek / memberGoal) * 100)), color: 'bg-[hsl(var(--chart-1))]' },
+    { label: 'Review loop', value: circle.quizAttemptsThisWeek, progress: Math.min(100, Math.round((circle.quizAttemptsThisWeek / 5) * 100)), color: 'bg-[hsl(var(--chart-4))]' },
+  ];
 
   return (
-    <div className="grid gap-3 border-b border-border/50 py-4 last:border-b-0 sm:grid-cols-[minmax(160px,1fr)_minmax(130px,.8fr)_auto] sm:items-center">
-      <div className="flex min-w-0 items-center gap-3">
-        <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size="md" />
-        <div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{member.displayName}{member.owner && <span className="ml-1.5 text-xs font-normal text-muted-foreground">· owner</span>}</p><p className="mt-0.5 text-xs text-muted-foreground">{momentum?.activeDays || 0} active days · {formatMinutes(momentum?.focusMinutes || 0)} focused</p></div>
-      </div>
-      <div><div className="mb-1.5 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Momentum</span><span className="font-numeric font-semibold text-foreground">{score}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${barWidth}%` }} /></div></div>
-      <div className="flex gap-4 text-right text-xs"><div><b className="font-numeric text-foreground">{momentum?.completedTasks || 0}</b><span className="ml-1 text-muted-foreground">tasks</span></div><div><b className="font-numeric text-foreground">{momentum?.quizAttempts || 0}</b><span className="ml-1 text-muted-foreground">reviews</span></div></div>
-    </div>
+    <Card className="border-border/80 bg-card shadow-ios-sm">
+      <CardContent className="p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="section-header">Team pulse</p>
+            <p className="mt-1 text-sm text-muted-foreground">Collective progress toward a healthy week.</p>
+          </div>
+          <Badge variant="outline" className="shrink-0">This week</Badge>
+        </div>
+        <div className="mt-7 space-y-5">
+          {signals.map((signal) => (
+            <div key={signal.label}>
+              <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+                <span className="font-medium text-foreground">{signal.label}</span>
+                <span className="font-numeric text-xs font-semibold text-muted-foreground">{signal.value}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className={`h-full rounded-full transition-[width] duration-700 ${signal.color}`} style={{ width: `${signal.progress}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-7 border-t border-border/60 pt-5">
+          <div className="flex items-start gap-3">
+            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {circle.collectiveMomentum >= 70
+                ? 'Your Circle is protecting a strong, balanced rhythm. Keep finishing what you start.'
+                : circle.collectiveMomentum >= 35
+                  ? 'Momentum is building. One more shared win can move the whole Circle forward.'
+                  : 'Start small together: one focus room and one finished commitment can restart the week.'}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
+const WeeklyRecognitions = ({ recognitions }) => (
+  <Card className="border-border/80 bg-card shadow-ios-sm">
+    <CardContent className="p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="section-header">Weekly recognitions</p>
+          <p className="mt-1 text-sm text-muted-foreground">Meaningful contribution, without an hours leaderboard.</p>
+        </div>
+        <Award className="h-5 w-5 shrink-0 text-primary" />
+      </div>
+      <div className="mt-5">
+        {recognitions.map((recognition) => {
+          const meta = recognitionMeta[recognition.key] || recognitionMeta.consistent;
+          return (
+            <div key={recognition.key} className="flex min-h-[76px] items-center gap-3 border-b border-border/55 py-3 last:border-b-0">
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.surface} ${meta.color}`}>
+                {createElement(recognition.unlocked ? meta.icon : LockKeyhole, { className: 'h-4 w-4' })}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase text-muted-foreground">{recognition.title}</p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                  {recognition.unlocked ? recognition.memberName : 'Still open'}
+                </p>
+                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{recognition.reason}</p>
+              </div>
+              {recognition.unlocked && <Avatar name={recognition.memberName} avatarUrl={recognition.avatarUrl} size="sm" />}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex items-center gap-2 rounded-md bg-muted/55 px-3 py-2 text-xs text-muted-foreground">
+        <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--chart-3))]" />
+        Resets every Monday. No private apps, task names, or individual hours are shown.
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const BadgeCabinet = ({ badges }) => (
+  <section>
+    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="section-header">Collab badges</p>
+        <p className="mt-1 text-sm text-muted-foreground">Shared milestones your Circle earns across the Collab ecosystem.</p>
+      </div>
+      <span className="text-xs font-medium text-muted-foreground">{badges.filter((badge) => badge.earned).length}/{badges.length} unlocked</span>
+    </div>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {badges.map((badge) => {
+        const meta = badgeMeta[badge.key] || badgeMeta['founding-circle'];
+        const progress = Math.min(100, Math.round((badge.progress / badge.goal) * 100));
+        return (
+          <Card key={badge.key} className={`border-border/80 bg-card shadow-ios-sm transition-colors ${badge.earned ? 'border-primary/25' : ''}`}>
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${badge.earned ? `${meta.surface} ${meta.color}` : 'bg-muted text-muted-foreground'}`}>
+                  {createElement(badge.earned ? meta.icon : LockKeyhole, { className: 'h-5 w-5' })}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{badge.name}</h3>
+                    {badge.earned && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
+                  </div>
+                  <p className="mt-1 min-h-9 text-xs leading-relaxed text-muted-foreground">{badge.description}</p>
+                </div>
+              </div>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className={`h-full rounded-full transition-[width] duration-700 ${badge.earned ? 'bg-primary' : 'bg-muted-foreground/35'}`} style={{ width: `${progress}%` }} />
+              </div>
+              <p className="mt-2 text-[11px] font-medium text-muted-foreground">{badge.earned ? 'Earned' : `${badge.progress} of ${badge.goal} toward unlock`}</p>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  </section>
+);
+
+const CircleRoster = ({ members, activeMemberCount, pendingMemberCount }) => (
+  <Card className="border-border/80 bg-card shadow-ios-sm">
+    <CardContent className="p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="section-header">People</p>
+          <p className="mt-1 text-sm text-muted-foreground">{activeMemberCount} active · {pendingMemberCount || 0} invited</p>
+        </div>
+        <span className="font-numeric text-xl font-bold text-foreground">{activeMemberCount + (pendingMemberCount || 0)}<span className="text-sm font-normal text-muted-foreground">/8</span></span>
+      </div>
+      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-4">
+        {members.map((member) => (
+          <div key={member.userId} className="flex min-w-0 items-center gap-2.5">
+            <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size="sm" />
+            <div className="min-w-0">
+              <p className="max-w-40 truncate text-sm font-medium text-foreground">{member.displayName}</p>
+              <p className="text-[11px] text-muted-foreground">{member.owner ? 'Owner' : member.status === 'INVITED' ? 'Invitation pending' : 'Circle member'}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
 const CircleDashboard = ({ circle, canManage, onManage }) => {
-  const activeMembers = circle.members.filter((member) => member.status === 'ACTIVE');
-  const pendingMembers = circle.members.filter((member) => member.status === 'INVITED');
-  const rankedMembers = [...activeMembers].sort((a, b) => (b.momentum?.score || 0) - (a.momentum?.score || 0));
-  const maxScore = rankedMembers[0]?.momentum?.score || 0;
-  const strongestMember = rankedMembers[0];
   const averageFocus = circle.activeMemberCount ? Math.round(circle.focusMinutesThisWeek / circle.activeMemberCount) : 0;
   const averageActiveDays = circle.activeMemberCount ? (circle.activeDaysThisWeek / circle.activeMemberCount).toFixed(1) : '0';
+  const recognitions = circle.weeklyRecognitions?.length ? circle.weeklyRecognitions : getFallbackRecognitions();
+  const badges = circle.ecosystemBadges?.length ? circle.ecosystemBadges : getFallbackBadges(circle);
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <Card className="overflow-hidden border-border/80 bg-card shadow-ios-sm">
-        <CardContent className="grid gap-6 p-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-center">
-          <div className="flex items-center gap-5 xl:border-r xl:border-border/60 xl:pr-6">
-            <CircularProgress percentage={circle.collectiveMomentum} size={108} strokeWidth={8} color="orange"><div className="text-center"><p className="font-numeric text-2xl font-bold text-foreground">{circle.collectiveMomentum}%</p><p className="text-[10px] text-muted-foreground">collective</p></div></CircularProgress>
-            <div className="min-w-0 xl:hidden"><h2 className="truncate text-xl font-semibold text-foreground">{circle.name}</h2><p className="mt-1 text-sm text-muted-foreground">{circle.activeMemberCount} active members</p></div>
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-5 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="flex min-w-0 items-center gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><UsersRound className="h-6 w-6" /></span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate text-xl font-semibold text-foreground">{circle.name}</h2>
+                  <Badge variant="outline" className="border-[hsl(var(--chart-3))]/30 bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]"><LockKeyhole className="mr-1 h-3 w-3" />Private</Badge>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">A weekly view of what this Circle is moving together.</p>
+              </div>
+            </div>
+            {canManage && <Button variant="outline" size="sm" onClick={onManage}><Settings2 className="mr-2 h-4 w-4" />Manage</Button>}
           </div>
-          <div className="min-w-0">
-            <div className="mb-5 hidden items-start justify-between gap-4 xl:flex"><div><div className="flex items-center gap-2"><h2 className="text-xl font-semibold text-foreground">{circle.name}</h2><Badge variant="outline" className="border-[hsl(var(--chart-3))]/30 bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]">private</Badge></div><p className="mt-1 text-sm text-muted-foreground">A weekly view of the commitments this Circle is moving together.</p></div>{canManage && <Button variant="outline" size="sm" onClick={onManage}><Settings2 className="mr-2 h-4 w-4" />Manage</Button>}</div>
-            <div className="mb-4 flex justify-end xl:hidden">{canManage && <Button variant="outline" size="sm" onClick={onManage}><Settings2 className="mr-2 h-4 w-4" />Manage</Button>}</div>
+          <div className="grid gap-6 px-5 py-6 lg:grid-cols-[145px_minmax(0,1fr)] lg:items-center sm:px-6">
+            <div className="flex items-center justify-center lg:border-r lg:border-border/60">
+              <CircularProgress percentage={circle.collectiveMomentum} size={116} strokeWidth={8} color="orange">
+                <div className="text-center"><p className="font-numeric text-2xl font-bold text-foreground">{circle.collectiveMomentum}%</p><p className="text-[10px] text-muted-foreground">momentum</p></div>
+              </CircularProgress>
+            </div>
             <div className="grid grid-cols-2 gap-y-5 sm:grid-cols-4">
-              <Metric label="Finished" value={circle.completedTasksThisWeek} detail="tasks this week" icon={CheckCircle2} color="text-[hsl(var(--chart-3))]" />
+              <Metric label="Finished" value={circle.completedTasksThisWeek} detail="collective tasks" icon={CheckCircle2} color="text-[hsl(var(--chart-3))]" />
               <Metric label="Focused" value={formatMinutes(circle.focusMinutesThisWeek)} detail={`${formatMinutes(averageFocus)} per member`} icon={Flame} color="text-primary" />
-              <Metric label="Consistency" value={averageActiveDays} detail="active days per member" icon={Target} color="text-[hsl(var(--chart-1))]" />
-              <Metric label="Reviews" value={circle.quizAttemptsThisWeek} detail="quiz attempts" icon={Clock3} color="text-[hsl(var(--chart-4))]" />
+              <Metric label="Consistency" value={averageActiveDays} detail="days per member" icon={Target} color="text-[hsl(var(--chart-1))]" />
+              <Metric label="Reviews" value={circle.quizAttemptsThisWeek} detail="collective attempts" icon={Clock3} color="text-[hsl(var(--chart-4))]" />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(280px,.7fr)]">
-        <Card className="border-border/80 bg-card shadow-ios-sm">
-          <CardContent className="p-6">
-            <div className="flex items-end justify-between gap-4"><div><p className="section-header">Member rhythm</p><p className="mt-1 text-sm text-muted-foreground">Private weekly progress, visible only inside this Circle.</p></div><span className="text-xs text-muted-foreground">{activeMembers.length} active</span></div>
-            <div className="mt-4">{rankedMembers.map((member) => <MemberRow key={member.userId} member={member} maxScore={maxScore} />)}</div>
-            {pendingMembers.length > 0 && <div className="mt-4 border-t border-border/60 pt-4"><p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Awaiting response</p><div className="flex flex-wrap gap-2">{pendingMembers.map((member) => <span key={member.userId} className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground"><Avatar name={member.displayName} avatarUrl={member.avatarUrl} size="sm" />{member.displayName}</span>)}</div></div>}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-5">
-          <Card className="border-border/80 bg-card shadow-ios-sm"><CardContent className="p-6"><span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><Flame className="h-5 w-5" /></span><p className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">This week’s signal</p><h3 className="mt-2 text-lg font-semibold text-foreground">{circle.collectiveMomentum >= 70 ? 'The Circle has a strong rhythm.' : circle.collectiveMomentum >= 35 ? 'Momentum is building.' : 'One shared win can restart the rhythm.'}</h3><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{strongestMember && circle.completedTasksThisWeek > 0 ? `${strongestMember.displayName} is setting the pace at ${strongestMember.momentum?.score || 0}% momentum. Together you completed ${circle.completedTasksThisWeek} tasks and protected ${formatMinutes(circle.focusMinutesThisWeek)}.` : 'Start with one small focus session and one finished task. The dashboard will reflect real progress as the Circle works.'}</p></CardContent></Card>
-          <Card className="border-border/80 bg-card shadow-ios-sm"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-foreground">Circle capacity</p><p className="mt-1 text-xs text-muted-foreground">{circle.activeMemberCount} active · {circle.pendingMemberCount || 0} invited</p></div><span className="font-numeric text-2xl font-bold text-foreground">{circle.activeMemberCount + (circle.pendingMemberCount || 0)}<span className="text-sm font-normal text-muted-foreground">/8</span></span></div><div className="mt-4 grid grid-cols-8 gap-1.5">{Array.from({ length: 8 }, (_, index) => <span key={index} className={`h-2 rounded-full ${index < circle.activeMemberCount ? 'bg-primary' : index < circle.activeMemberCount + (circle.pendingMemberCount || 0) ? 'bg-[hsl(var(--chart-4))]' : 'bg-muted'}`} />)}</div></CardContent></Card>
-        </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,.95fr)]">
+        <TeamPulse circle={circle} />
+        <WeeklyRecognitions recognitions={recognitions} />
       </div>
+
+      <BadgeCabinet badges={badges} />
+      <CircleRoster members={circle.members} activeMemberCount={circle.activeMemberCount} pendingMemberCount={circle.pendingMemberCount} />
     </div>
   );
 };
@@ -139,7 +338,7 @@ export const CirclesPage = () => {
   return (
     <div className="accent-teal w-full px-4 py-8 sm:py-10">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="eyebrow-label"><UsersRound className="h-3.5 w-3.5 text-primary" />Private circles</p><h1 className="mt-2 text-3xl font-bold text-foreground">Progress, with people you trust.</h1><p className="mt-2 max-w-2xl text-muted-foreground">A shared weekly rhythm built from real focus, completed tasks, and consistency.</p></div>
+        <div><p className="eyebrow-label"><UsersRound className="h-3.5 w-3.5 text-primary" />Private circles</p><h1 className="mt-2 text-3xl font-bold text-foreground">Progress, with people you trust.</h1><p className="mt-2 max-w-2xl text-muted-foreground">Shared momentum, meaningful recognition, and no surveillance-style leaderboard.</p></div>
         <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Create Circle</Button>
       </div>
 

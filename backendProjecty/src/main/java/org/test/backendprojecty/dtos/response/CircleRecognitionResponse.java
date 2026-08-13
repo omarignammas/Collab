@@ -4,16 +4,17 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.test.backendprojecty.entity.CircleMemberStatus;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CircleMemberResponse {
-    private Long userId;
-    private String displayName;
+public class CircleRecognitionResponse {
+    private String key;
+    private String title;
+    private Long memberId;
+    private String memberName;
     private String avatarUrl;
-    private CircleMemberStatus status;
-    private boolean owner;
+    private String reason;
+    private boolean unlocked;
 }

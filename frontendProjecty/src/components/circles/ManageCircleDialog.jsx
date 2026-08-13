@@ -115,7 +115,7 @@ export const ManageCircleDialog = ({ circle, open, onOpenChange, onUpdated, onDe
                   <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size="md" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{member.displayName}{member.owner && <span className="ml-1 text-xs text-muted-foreground">· owner</span>}</p>
-                    <p className="text-xs text-muted-foreground">{member.status === 'INVITED' ? 'Invitation pending' : `${member.momentum?.score || 0}% momentum this week`}</p>
+                    <p className="text-xs text-muted-foreground">{member.status === 'INVITED' ? 'Invitation pending' : 'Active Circle member'}</p>
                   </div>
                   {!member.owner && (
                     <Button type="button" size="icon" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => removeMember(member)} disabled={busyAction === `remove-${member.userId}`} title={`Remove ${member.displayName}`}>

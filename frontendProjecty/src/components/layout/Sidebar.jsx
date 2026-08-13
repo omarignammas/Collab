@@ -20,7 +20,9 @@ import {
   ChevronRight,
   X,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 // Grouped to read like a native macOS sidebar (Mail/Notes-style sections)
 // rather than one flat list.
@@ -60,6 +62,8 @@ const BOTTOM_ITEMS = [
   { to: '/profile', label: 'Profile', icon: User },
 ];
 
+const ADMIN_ITEM = { to: '/admin', label: 'Admin', icon: ShieldCheck };
+
 const SIDEBAR_STORAGE_KEY = 'sidebar-expanded';
 
 const railLinkClass = (expanded) => ({ isActive }) =>
@@ -87,7 +91,7 @@ const RailLink = ({ item, expanded, onNavigate }) => (
 // Shared between the desktop rail and the mobile drawer — `expanded` is always true
 // on mobile (there's no icon-only collapsed state there), and `onNavigate`/`onClose`
 // close the drawer after a link or the quick-add button is used.
-const SidebarNav = ({ expanded, onQuickAdd, onNavigate, showCollapseToggle, onToggleExpanded }) => (
+const SidebarNav = ({ expanded, onQuickAdd, onNavigate, showCollapseToggle, onToggleExpanded, isAdmin }) => (
   <>
     <div className={`mb-4 flex items-center ${expanded ? 'justify-between px-1 pr-8' : 'justify-center'}`}>
       <NavLink
@@ -137,7 +141,7 @@ const SidebarNav = ({ expanded, onQuickAdd, onNavigate, showCollapseToggle, onTo
 
       <div>
         <ul className="space-y-0.5 border-t border-border/70 pt-3">
-          {BOTTOM_ITEMS.map((item) => (
+          {(isAdmin ? [ADMIN_ITEM, ...BOTTOM_ITEMS] : BOTTOM_ITEMS).map((item) => (
             <li key={item.to}>
               <RailLink item={item} expanded={expanded} onNavigate={onNavigate} />
             </li>
@@ -167,6 +171,8 @@ const SidebarNav = ({ expanded, onQuickAdd, onNavigate, showCollapseToggle, onTo
 );
 
 export const Sidebar = ({ onQuickAdd, mobileOpen = false, onMobileClose }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [expanded, setExpanded] = useState(() => localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true');
 
   useEffect(() => {
@@ -202,6 +208,7 @@ export const Sidebar = ({ onQuickAdd, mobileOpen = false, onMobileClose }) => {
           onQuickAdd={onQuickAdd}
           showCollapseToggle
           onToggleExpanded={() => setExpanded((e) => !e)}
+          isAdmin={isAdmin}
         />
       </aside>
 
@@ -222,7 +229,7 @@ export const Sidebar = ({ onQuickAdd, mobileOpen = false, onMobileClose }) => {
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarNav expanded onQuickAdd={onQuickAdd} onNavigate={onMobileClose} showCollapseToggle={false} />
+            <SidebarNav expanded onQuickAdd={onQuickAdd} onNavigate={onMobileClose} showCollapseToggle={false} isAdmin={isAdmin} />
           </aside>
         </div>
       )}

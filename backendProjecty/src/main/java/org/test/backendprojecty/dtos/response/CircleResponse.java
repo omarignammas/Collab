@@ -26,6 +26,8 @@ public class CircleResponse {
     private int focusMinutesThisWeek;
     private int activeDaysThisWeek;
     private int quizAttemptsThisWeek;
+    private List<CircleRecognitionResponse> weeklyRecognitions;
+    private List<CircleBadgeResponse> ecosystemBadges;
     private List<CircleMemberResponse> members;
     private LocalDateTime createdAt;
 }

@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
+import { motion as Motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
   AppWindow,
   Bell,
+  BellOff,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   DoorOpen,
   FileText,
@@ -51,6 +55,19 @@ const NOTIFICATION_ICONS = {
   FOCUS_ROOM_REPORT_READY: FileText,
   CIRCLE_INVITE: Users,
 };
+
+const WORK_NUDGES = [
+  'Stay with the one thing.',
+  'Good work. Protect this block.',
+  'Small progress still compounds.',
+  'One clear finish beats five open loops.',
+];
+
+const BREAK_NUDGES = [
+  'Good work. Time for a real break?',
+  'Step away for a moment. Your focus will thank you.',
+  'Reset your eyes, shoulders, and attention.',
+];
 
 const formatAge = (createdAt) => {
   if (!createdAt) return 'now';
@@ -288,6 +305,80 @@ const QuickNoteSurface = ({ value, onChange, onSave, onCancel, onToggleVoice, vo
   </form>
 );
 
+const CompactFocusWidget = ({
+  session,
+  nudgesEnabled,
+  nudgeIndex,
+  nudgeVisible,
+  onToggleNudges,
+  onDismissNudge,
+  onExpand,
+}) => {
+  const reduceMotion = useReducedMotion();
+  const isBreak = /break/i.test(session.phaseLabel || '');
+  const messages = isBreak ? BREAK_NUDGES : WORK_NUDGES;
+  const message = messages[nudgeIndex % messages.length];
+
+  return (
+    <div className="flex h-screen w-screen flex-col items-center overflow-hidden bg-transparent">
+      <Motion.div
+        initial={reduceMotion ? false : { opacity: 0, y: -8, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        className="flex h-[58px] shrink-0 items-center gap-1.5 rounded-[29px] border border-white/10 bg-[#242428]/95 p-1.5 text-white shadow-[0_14px_38px_rgba(0,0,0,0.32)] ring-1 ring-black/35 backdrop-blur-2xl"
+      >
+        <div className="flex h-[46px] min-w-[210px] items-center justify-center gap-2.5 rounded-[24px] border border-white/10 bg-[#19191d]/90 px-4 shadow-inner">
+          <Clock3 className={`h-[17px] w-[17px] ${isBreak ? 'text-[#77b7ff]' : 'text-[#ec8a61]'}`} strokeWidth={2.35} />
+          <span className="font-numeric text-[21px] font-medium tabular-nums tracking-normal text-white">
+            {session.remainingLabel}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          title={nudgesEnabled ? 'Mute focus nudges' : 'Enable focus nudges'}
+          onClick={onToggleNudges}
+          className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full border border-white/5 transition-colors ${nudgesEnabled ? 'bg-white/20 text-white hover:bg-white/25' : 'bg-white/10 text-white/55 hover:bg-white/15'}`}
+        >
+          {nudgesEnabled ? <Bell className="h-[18px] w-[18px]" /> : <BellOff className="h-[18px] w-[18px]" />}
+        </button>
+
+        <button
+          type="button"
+          title="Open Focus Room controls"
+          onClick={onExpand}
+          className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full border border-white/5 bg-white/20 text-white transition-colors hover:bg-white/25"
+        >
+          <ChevronDown className="h-5 w-5" strokeWidth={2.25} />
+        </button>
+      </Motion.div>
+
+      <AnimatePresence>
+        {nudgeVisible && nudgesEnabled && (
+          <Motion.div
+            key={`${session.phaseLabel}-${nudgeIndex}`}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            className="mt-2 flex h-[50px] w-[410px] items-center gap-2.5 rounded-[25px] border border-white/10 bg-[#202024]/95 px-3.5 text-white shadow-[0_12px_30px_rgba(0,0,0,0.26)] ring-1 ring-black/25 backdrop-blur-2xl"
+          >
+            <Sparkles className="h-4 w-4 shrink-0 text-[#ec8a61]" />
+            <p className="min-w-0 flex-1 truncate text-[14px] font-medium tracking-normal text-white/95">{message}</p>
+            <button
+              type="button"
+              onClick={onDismissNudge}
+              className="h-9 shrink-0 rounded-full bg-[#d77955] px-4 text-[13px] font-semibold text-white transition-colors hover:bg-[#e18460]"
+            >
+              {isBreak ? 'Rest' : 'Got it'}
+            </button>
+          </Motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export const WidgetPage = () => {
   const { user } = useAuth();
   const { summary: activitySummary, refresh: refreshActivity } = useActivityTracking();
@@ -306,6 +397,10 @@ export const WidgetPage = () => {
   const [quickNoteMode, setQuickNoteMode] = useState(false);
   const [quickNoteText, setQuickNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [compactFocus, setCompactFocus] = useState(true);
+  const [nudgesEnabled, setNudgesEnabled] = useState(true);
+  const [nudgeVisible, setNudgeVisible] = useState(false);
+  const [nudgeIndex, setNudgeIndex] = useState(0);
   const swipeStart = useRef(null);
   const sessionRef = useRef(null);
   const lastSpokenText = useRef('');
@@ -313,6 +408,24 @@ export const WidgetPage = () => {
   const researchPollToken = useRef(0);
   const quickNoteModeRef = useRef(false);
   const discardTranscriptionRef = useRef(false);
+
+  const setWidgetDisplayMode = useCallback((mode) => {
+    if (isTauri()) emit('widget-display-mode', { mode });
+  }, []);
+
+  const expandFocusWidget = useCallback(() => {
+    setCompactFocus(false);
+    setNudgeVisible(false);
+    setPanel('pomodoro');
+    setWidgetDisplayMode('expanded');
+  }, [setWidgetDisplayMode]);
+
+  const collapseFocusWidget = useCallback(() => {
+    setCompactFocus(true);
+    setAssistantResult(null);
+    setPanel('pomodoro');
+    setWidgetDisplayMode('compact');
+  }, [setWidgetDisplayMode]);
 
   const refreshDigest = useCallback(async () => {
     refreshActivity();
@@ -420,10 +533,11 @@ export const WidgetPage = () => {
 
   const beginVoice = useCallback(() => {
     if (voiceState !== 'idle') return;
+    if (sessionRef.current) expandFocusWidget();
     setAssistantResult(null);
     setRecordingStartedAt(Date.now());
     startRecording();
-  }, [startRecording, voiceState]);
+  }, [expandFocusWidget, startRecording, voiceState]);
 
   const toggleVoice = () => {
     if (voiceState === 'idle') {
@@ -441,9 +555,10 @@ export const WidgetPage = () => {
       stopRecording();
     }
     setAssistantResult(null);
+    if (sessionRef.current) expandFocusWidget();
     quickNoteModeRef.current = true;
     setQuickNoteMode(true);
-  }, [stopRecording, voiceState]);
+  }, [expandFocusWidget, stopRecording, voiceState]);
 
   const cancelQuickNote = () => {
     quickNoteModeRef.current = false;
@@ -506,6 +621,29 @@ export const WidgetPage = () => {
       clearInterval(interval);
     };
   }, [refreshDigest]);
+
+  useEffect(() => {
+    if (!session?.roomCode || !compactFocus || !nudgesEnabled) {
+      setNudgeVisible(false);
+      return undefined;
+    }
+
+    let hideTimer;
+    const showNudge = () => {
+      setNudgeIndex((current) => current + 1);
+      setNudgeVisible(true);
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setNudgeVisible(false), 9_000);
+    };
+
+    const introTimer = setTimeout(showNudge, 1_400);
+    const repeatTimer = setInterval(showNudge, 8 * 60_000);
+    return () => {
+      clearTimeout(introTimer);
+      clearTimeout(hideTimer);
+      clearInterval(repeatTimer);
+    };
+  }, [compactFocus, nudgesEnabled, session?.phaseLabel, session?.roomCode]);
 
   useEffect(() => {
     if (voiceState !== 'recording' || !recordingStartedAt) return undefined;
@@ -604,11 +742,16 @@ export const WidgetPage = () => {
       const wasInactive = sessionRef.current == null;
       sessionRef.current = event.payload;
       setSession(event.payload);
-      if (wasInactive) setPanel('pomodoro');
+      if (wasInactive) {
+        setCompactFocus(true);
+        setPanel('pomodoro');
+      }
     });
     const unlistenClear = listen('session-cleared', () => {
       sessionRef.current = null;
       setSession(null);
+      setCompactFocus(true);
+      setNudgeVisible(false);
       setPanel('overview');
       refreshDigest();
     });
@@ -617,6 +760,25 @@ export const WidgetPage = () => {
       unlistenClear.then((fn) => fn());
     };
   }, [refreshDigest]);
+
+  useEffect(() => {
+    if (!isTauri()) return undefined;
+    const unlistenCompact = listen('widget-compact', () => {
+      setCompactFocus(true);
+      setAssistantResult(null);
+      setNudgeVisible(false);
+      setPanel('pomodoro');
+    });
+    const unlistenExpanded = listen('widget-expanded', () => {
+      setCompactFocus(false);
+      setNudgeVisible(false);
+      setPanel('pomodoro');
+    });
+    return () => {
+      unlistenCompact.then((fn) => fn());
+      unlistenExpanded.then((fn) => fn());
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) return undefined;
@@ -635,6 +797,23 @@ export const WidgetPage = () => {
   const topApp = activitySummary.todayFocusApps?.[0] || activitySummary.todayTopApps?.[0] || null;
   const firstName = user?.firstName?.trim() || 'there';
 
+  if (session && compactFocus && !quickNoteMode && voiceState === 'idle' && !assistantResult) {
+    return (
+      <CompactFocusWidget
+        session={session}
+        nudgesEnabled={nudgesEnabled}
+        nudgeIndex={nudgeIndex}
+        nudgeVisible={nudgeVisible}
+        onToggleNudges={() => {
+          setNudgesEnabled((enabled) => !enabled);
+          setNudgeVisible(false);
+        }}
+        onDismissNudge={() => setNudgeVisible(false)}
+        onExpand={expandFocusWidget}
+      />
+    );
+  }
+
   const header = (
     <div className="flex shrink-0 items-center justify-between">
       <div className="flex items-center gap-1.5">
@@ -652,7 +831,10 @@ export const WidgetPage = () => {
       <div className="ml-auto flex items-center gap-1.5">
         <button type="button" title="Quick note" onClick={beginQuickNote} className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${quickNoteMode ? 'bg-primary text-primary-foreground' : 'bg-secondary/70 text-muted-foreground hover:text-foreground'}`}><NotebookPen className="h-3.5 w-3.5" /></button>
         {session ? (
-          <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</div>
+          <>
+            <button type="button" title="Minimize Focus Room controls" onClick={collapseFocusWidget} className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground"><ChevronUp className="h-3.5 w-3.5" /></button>
+            <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</div>
+          </>
         ) : (
           <div className="flex items-center gap-1.5">
             <span className="font-numeric text-[9px] text-muted-foreground">{format(new Date(), 'EEE d')}</span>

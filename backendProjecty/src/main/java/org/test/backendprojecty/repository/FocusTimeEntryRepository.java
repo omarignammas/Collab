@@ -10,4 +10,6 @@ import java.util.List;
 @Repository
 public interface FocusTimeEntryRepository extends JpaRepository<FocusTimeEntry, Long> {
     List<FocusTimeEntry> findByUserIdAndEarnedAtAfter(Long userId, Instant cutoff);
+
+    List<FocusTimeEntry> findByUserIdAndEarnedAtBetween(Long userId, Instant start, Instant end);
 }

@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Collab — X launch film</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #201d1b;
+        --muted: #817a73;
+        --line: #e8e2dc;
+        --paper: #f8f7f4;
+        --card: #ffffff;
+        --orange: #d5734f;
+        --orange-dark: #9f492f;
+        --orange-soft: #f6e5dd;
+        --green: #3e8d69;
+        --shadow: 0 24px 70px rgba(43, 35, 29, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      }
+
+      #film {
+        position: relative;
+        width: 1600px;
+        height: 900px;
+        overflow: hidden;
+        background:
+          linear-gradient(rgba(32, 29, 27, 0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(32, 29, 27, 0.025) 1px, transparent 1px),
+          var(--paper);
+        background-size: 72px 72px;
+        transform-origin: top left;
+      }
+
+      .topbar {
+        position: absolute;
+        z-index: 20;
+        top: 32px;
+        left: 48px;
+        right: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .brand { display: flex; align-items: center; gap: 14px; font-size: 24px; font-weight: 760; }
+      .logo {
+        position: relative;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: var(--orange);
+        box-shadow: 0 10px 24px rgba(213, 115, 79, 0.25);
+      }
+      .logo::before {
+        content: "";
+        position: absolute;
+        inset: 11px 9px 10px;
+        border: 2.5px solid white;
+        border-radius: 5px;
+      }
+      .logo::after {
+        content: "";
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        left: 17px;
+        top: 8px;
+        border: 2.5px solid white;
+        border-bottom: 0;
+        border-radius: 4px 4px 0 0;
+      }
+      .film-tag { color: var(--muted); font-size: 15px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        will-change: opacity, transform;
+      }
+
+      .eyebrow { color: var(--orange-dark); font-size: 17px; font-weight: 760; letter-spacing: .14em; text-transform: uppercase; }
+      h1, h2, p { margin: 0; }
+      .headline { font-size: 68px; line-height: 1.02; letter-spacing: -0.035em; font-weight: 790; }
+      .headline.small { font-size: 58px; }
+      .subhead { margin-top: 22px; color: var(--muted); font-size: 25px; line-height: 1.45; }
+      .accent { color: var(--orange); }
+
+      .hook-copy { position: absolute; left: 110px; top: 245px; width: 690px; }
+      .hook-copy .eyebrow { margin-bottom: 24px; }
+      .hook-chat { position: absolute; right: 110px; top: 190px; width: 585px; height: 530px; }
+
+      .window {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255,255,255,.95);
+        box-shadow: var(--shadow);
+      }
+      .window-bar { height: 54px; border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 20px; gap: 8px; }
+      .dot { width: 10px; height: 10px; border-radius: 50%; background: #e6ded7; }
+      .window-title { margin-left: 12px; color: var(--muted); font-size: 14px; font-weight: 650; }
+      .room-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 26px 18px; }
+      .room-name { font-size: 19px; font-weight: 740; }
+      .live { display: flex; align-items: center; gap: 7px; color: var(--green); font-size: 14px; font-weight: 700; }
+      .live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+      .chat-stack { padding: 10px 26px 24px; display: flex; flex-direction: column; gap: 13px; }
+      .bubble { max-width: 82%; padding: 13px 16px; border-radius: 18px; color: #4d4742; font-size: 16px; line-height: 1.42; background: #f1efec; }
+      .bubble.you { align-self: flex-end; color: white; background: var(--orange); border-bottom-right-radius: 5px; }
+      .bubble.other { border-bottom-left-radius: 5px; }
+      .typing { display: flex; gap: 5px; align-items: center; width: 66px; }
+      .typing i { width: 7px; height: 7px; border-radius: 50%; background: #a79e96; }
+
+      .loop-title { position: absolute; left: 0; right: 0; top: 138px; text-align: center; }
+      .workflow { position: absolute; left: 100px; right: 100px; top: 335px; display: flex; align-items: center; justify-content: space-between; }
+      .workflow-card {
+        width: 248px;
+        height: 198px;
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: white;
+        box-shadow: 0 18px 45px rgba(48,39,32,.08);
+      }
+      .workflow-icon { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--orange-soft); color: var(--orange-dark); font-size: 22px; font-weight: 800; }
+      .workflow-card h3 { margin: 24px 0 5px; font-size: 20px; }
+      .workflow-card p { color: var(--muted); font-size: 15px; line-height: 1.4; }
+      .flow-arrow { color: #c9c0b8; font-size: 40px; font-weight: 300; }
+      .repeat-pill { position: absolute; left: 50%; bottom: 115px; transform: translateX(-50%); border-radius: 999px; background: #2b2724; color: white; padding: 15px 24px; font-size: 17px; font-weight: 700; }
+
+      .insight { display: grid; place-items: center; text-align: center; }
+      .insight-inner { width: 1100px; }
+      .insight-orbit { position: relative; width: 158px; height: 158px; margin: 0 auto 40px; border: 1px solid #e2d8d0; border-radius: 50%; }
+      .insight-orbit::before, .insight-orbit::after { content: ""; position: absolute; inset: 22px; border: 1px solid #e8ded7; border-radius: 50%; }
+      .insight-orbit::after { inset: 50px; background: var(--orange); border: 0; box-shadow: 0 0 0 16px var(--orange-soft); }
+      .insight .headline { max-width: 1050px; margin: 0 auto; }
+      .insight .subhead { font-size: 24px; }
+
+      .prompt-copy { position: absolute; left: 86px; top: 170px; width: 475px; }
+      .prompt-shell { position: absolute; left: 590px; right: 70px; top: 145px; height: 625px; }
+      .app-shell { display: grid; grid-template-columns: 96px 1fr; height: 100%; }
+      .sidebar { border-right: 1px solid var(--line); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+      .side-logo { width: 46px; height: 46px; transform: scale(.82); }
+      .nav-dot { width: 42px; height: 42px; border-radius: 12px; background: #f1efec; }
+      .nav-dot.active { background: var(--orange-soft); border: 1px solid #edcfc1; }
+      .workspace { display: grid; grid-template-rows: 76px 1fr; min-width: 0; }
+      .workspace-head { border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
+      .workspace-head strong { font-size: 19px; }
+      .avatars { display: flex; }
+      .avatar { width: 34px; height: 34px; display: grid; place-items: center; margin-left: -8px; border: 3px solid white; border-radius: 50%; color: #765547; font-size: 11px; font-weight: 800; background: #f2dcd2; }
+      .workspace-body { padding: 24px; display: grid; grid-template-columns: 270px 1fr; gap: 20px; }
+      .timer-card, .chat-card { border: 1px solid var(--line); border-radius: 16px; background: white; }
+      .timer-card { padding: 22px; }
+      .timer-label { display: flex; align-items: center; gap: 8px; font-weight: 730; font-size: 15px; }
+      .timer-label i { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); }
+      .timer-ring { width: 162px; height: 162px; margin: 28px auto; border-radius: 50%; background: conic-gradient(var(--orange) 0 72%, #f0ede9 72% 100%); display: grid; place-items: center; }
+      .timer-ring::before { content: ""; position: absolute; width: 139px; height: 139px; background: white; border-radius: 50%; }
+      .timer-time { position: relative; z-index: 1; text-align: center; font-size: 32px; font-weight: 780; }
+      .timer-time span { display: block; color: var(--muted); font-size: 12px; font-weight: 550; margin-top: 3px; }
+      .people { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); padding-top: 18px; }
+      .person { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 13px; }
+      .person strong { color: var(--ink); }
+      .chat-card { display: flex; flex-direction: column; overflow: hidden; }
+      .chat-title { height: 57px; padding: 0 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); font-weight: 730; }
+      .chat-title span { color: var(--orange); }
+      .focus-chat { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+      .ai-bubble { border: 1px solid #eacabd; background: #fff9f6; color: #51463f; }
+      .composer { height: 67px; border-top: 1px solid var(--line); margin-top: auto; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+      .composer-box { flex: 1; height: 46px; border-radius: 13px; background: #f5f3f0; padding: 13px 15px; color: #615a54; font-size: 14px; white-space: nowrap; overflow: hidden; }
+      .send { width: 46px; height: 46px; border-radius: 13px; background: var(--orange); color: white; display: grid; place-items: center; font-size: 18px; }
+      .cursor { display: inline-block; width: 2px; height: 17px; margin-left: 2px; vertical-align: -3px; background: var(--orange); }
+
+      .answer-wrap { position: absolute; inset: 120px 80px 70px; display: grid; grid-template-columns: .82fr 1.18fr; gap: 26px; }
+      .answer-left { display: flex; flex-direction: column; justify-content: center; padding-left: 20px; }
+      .answer-left .eyebrow { margin-bottom: 20px; }
+      .answer-left .subhead { max-width: 510px; }
+      .decision-window { align-self: center; height: 650px; }
+      .report-body { padding: 28px 32px; }
+      .report-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 26px; }
+      .report-title { font-size: 24px; font-weight: 780; }
+      .report-meta { margin-top: 6px; color: var(--muted); font-size: 14px; }
+      .ready-badge { display: flex; align-items: center; gap: 7px; border-radius: 999px; color: var(--green); background: #edf7f1; padding: 9px 13px; font-size: 13px; font-weight: 750; }
+      .ready-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+      .report-section { border-top: 1px solid var(--line); padding: 20px 0; }
+      .report-section h4 { margin: 0 0 13px; font-size: 13px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+      .report-line { display: flex; gap: 11px; margin: 10px 0; color: #4c4641; font-size: 16px; line-height: 1.42; }
+      .check { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; margin-top: 1px; color: var(--green); background: #e7f3ec; font-size: 12px; font-weight: 900; }
+      .share-row { display: flex; gap: 10px; margin-top: 18px; }
+      .share-avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--orange-soft); color: var(--orange-dark); font-size: 11px; font-weight: 800; }
+      .shared-label { align-self: center; color: var(--muted); font-size: 14px; }
+
+      .outro { display: grid; place-items: center; text-align: center; background: var(--ink); color: white; }
+      .outro::before { content: ""; position: absolute; width: 760px; height: 760px; border-radius: 50%; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 0 0 120px rgba(255,255,255,.025), 0 0 0 240px rgba(255,255,255,.018); }
+      .outro-inner { position: relative; z-index: 2; width: 1100px; }
+      .outro-brand { display: inline-flex; align-items: center; gap: 18px; font-size: 34px; font-weight: 800; margin-bottom: 42px; }
+      .outro .headline { font-size: 72px; }
+      .outro .subhead { color: #b9b2ac; }
+      .cta { display: inline-flex; margin-top: 42px; padding: 15px 23px; border-radius: 999px; background: var(--orange); color: white; font-size: 16px; font-weight: 760; }
+
+      .progress { position: absolute; z-index: 30; left: 48px; right: 48px; bottom: 30px; height: 3px; border-radius: 2px; background: rgba(128,116,106,.15); overflow: hidden; }
+      .progress > span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--orange); }
+    </style>
+  </head>
+  <body>
+    <main id="film">
+      <header class="topbar">
+        <div class="brand"><span class="logo"></span><span>Collab</span></div>
+        <div class="film-tag">The origin story</div>
+      </header>
+
+      <section class="scene hook" data-start="0" data-end="5.2">
+        <div class="hook-copy">
+          <p class="eyebrow">It started with one annoying loop</p>
+          <h1 class="headline">We were trying to make <span class="accent">one decision.</span></h1>
+          <p class="subhead">Which tech stack and free deployment option should we use for our sales app?</p>
+        </div>
+        <div class="hook-chat window">
+          <div class="window-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="window-title">Team chat · Sales workspace</span></div>
+          <div class="room-header"><span class="room-name">Project decisions</span><span class="live">3 online</span></div>
+          <div class="chat-stack">
+            <div class="bubble other">Should we use React or Next.js for the sales dashboard?</div>
+            <div class="bubble you">And where can we deploy it for free?</div>
+            <div class="bubble other">Can someone compare the options before we commit?</div>
+            <div class="bubble typing"><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene loop" data-start="5.2" data-end="10.7">
+        <div class="loop-title">
+          <p class="eyebrow">So I became the middleman</p>
+          <h2 class="headline small">The same routine. Every time.</h2>
+        </div>
+        <div class="workflow">
+          <article class="workflow-card"><div class="workflow-icon">01</div><h3>Leave the chat</h3><p>Break the team’s momentum.</p></article>
+          <div class="flow-arrow">→</div>
+          <article class="workflow-card"><div class="workflow-icon">02</div><h3>Ask another AI</h3><p>Repeat all the context again.</p></article>
+          <div class="flow-arrow">→</div>
+          <article class="workflow-card"><div class="workflow-icon">03</div><h3>Copy the answer</h3><p>Switch tabs one more time.</p></article>
+          <div class="flow-arrow">→</div>
+          <article class="workflow-card"><div class="workflow-icon">04</div><h3>Paste it back</h3><p>Hope nothing was lost.</p></article>
+        </div>
+        <div class="repeat-pill">Switch → copy → paste → repeat</div>
+      </section>
+
+      <section class="scene insight" data-start="10.7" data-end="15.1">
+        <div class="insight-inner">
+          <div class="insight-orbit"></div>
+          <p class="eyebrow">Then the obvious question</p>
+          <h2 class="headline">Why isn’t the AI <span class="accent">already in the room?</span></h2>
+          <p class="subhead">With the team, the conversation, and the context.</p>
+        </div>
+      </section>
+
+      <section class="scene prompt" data-start="15.1" data-end="23.0">
+        <div class="prompt-copy">
+          <p class="eyebrow">So we built it</p>
+          <h2 class="headline small">Ask once.<br /><span class="accent">Move together.</span></h2>
+          <p class="subhead">Collab works inside the Focus Room, where the work is already happening.</p>
+        </div>
+        <div class="prompt-shell window">
+          <div class="window-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="window-title">app.collab.space · Focus Room</span></div>
+          <div class="app-shell">
+            <aside class="sidebar"><span class="logo side-logo"></span><span class="nav-dot"></span><span class="nav-dot active"></span><span class="nav-dot"></span><span class="nav-dot"></span></aside>
+            <div class="workspace">
+              <div class="workspace-head"><strong>Sales app · Decision sprint</strong><div class="avatars"><span class="avatar">OA</span><span class="avatar">AY</span><span class="avatar">LN</span></div></div>
+              <div class="workspace-body">
+                <article class="timer-card">
+                  <div class="timer-label"><i></i> Focus · Round 2/4</div>
+                  <div class="timer-ring"><div class="timer-time">18:24<span>remaining</span></div></div>
+                  <div class="people"><div class="person"><strong>Omar</strong><span>focusing</span></div><div class="person"><strong>Ayoub</strong><span>focusing</span></div><div class="person"><strong>Lina</strong><span>taking notes</span></div></div>
+                </article>
+                <article class="chat-card">
+                  <div class="chat-title"><span>✦</span> Room chat</div>
+                  <div class="focus-chat">
+                    <div class="bubble other">We need a decision today, not another research rabbit hole.</div>
+                    <div class="bubble you">@Collab, compare the best tech stacks and free deployment options for our sales app.</div>
+                    <div class="bubble ai-bubble" id="aiReply">I’m comparing the options against your project constraints…</div>
+                  </div>
+                  <div class="composer"><div class="composer-box"><span id="typedPrompt"></span><i class="cursor"></i></div><div class="send">↑</div></div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene answer" data-start="23.0" data-end="31.6">
+        <div class="answer-wrap">
+          <div class="answer-left">
+            <p class="eyebrow">One shared answer</p>
+            <h2 class="headline small">Decisions become <span class="accent">team memory.</span></h2>
+            <p class="subhead">Collab turns the room’s context into a clear recommendation everyone can use.</p>
+          </div>
+          <div class="decision-window window">
+            <div class="window-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="window-title">Collab · Decision report</span></div>
+            <div class="report-body">
+              <div class="report-top"><div><div class="report-title">Sales app · Tech stack decision</div><div class="report-meta">Generated from the Focus Room conversation</div></div><span class="ready-badge">Report ready</span></div>
+              <div class="report-section"><h4>Recommendation</h4><div class="report-line"><span class="check">✓</span><span><strong>React + Spring Boot + PostgreSQL</strong> fits the team’s current skills and keeps the architecture easy to extend.</span></div><div class="report-line"><span class="check">✓</span><span><strong>Netlify + Render</strong> is the simplest free starting point for the frontend and API.</span></div></div>
+              <div class="report-section"><h4>Next actions</h4><div class="report-line"><span class="check">1</span><span>Omar creates the frontend deployment.</span></div><div class="report-line"><span class="check">2</span><span>Ayoub validates the database and API limits.</span></div><div class="share-row"><span class="share-avatar">AY</span><span class="shared-label">Shared with Ayoub and the room</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene recap" data-start="31.6" data-end="37.4">
+        <div class="answer-wrap">
+          <div class="answer-left">
+            <p class="eyebrow">When the session ends</p>
+            <h2 class="headline small">Nothing useful <span class="accent">disappears.</span></h2>
+            <p class="subhead">Decisions, notes, questions, and action items become a clean recap automatically.</p>
+          </div>
+          <div class="decision-window window">
+            <div class="window-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="window-title">Collab · Session recap</span></div>
+            <div class="report-body">
+              <div class="report-top"><div><div class="report-title">Decision sprint · Full recap</div><div class="report-meta">42 minutes · 3 participants · 1 decision</div></div><span class="ready-badge">Saved</span></div>
+              <div class="report-section"><h4>What happened</h4><div class="report-line"><span class="check">✓</span><span>The team compared four frontend and deployment paths.</span></div><div class="report-line"><span class="check">✓</span><span>React, Spring Boot, and PostgreSQL were selected.</span></div><div class="report-line"><span class="check">✓</span><span>Two follow-up tasks were assigned with owners.</span></div></div>
+              <div class="report-section"><h4>Collab insight</h4><div class="report-line"><span class="check">✦</span><span>The decision is ready to execute. Revisit hosting limits before launch.</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene outro" data-start="37.4" data-end="43.0">
+        <div class="outro-inner">
+          <div class="outro-brand"><span class="logo"></span><span>Collab</span></div>
+          <h2 class="headline">No tab switching.<br /><span class="accent">No lost context.</span></h2>
+          <p class="subhead">Focus together. Leave with clarity.</p>
+          <div class="cta">Building in public · trycollab.space</div>
+        </div>
+      </section>
+
+      <div class="progress"><span id="progressBar"></span></div>
+    </main>
+
+    <script>
+      const DURATION = 43;
+      const film = document.querySelector('#film');
+      const scenes = [...document.querySelectorAll('.scene')];
+      const promptText = '@Collab, generate the decision report and share it with Ayoub.';
+
+      function clamp(value, min = 0, max = 1) { return Math.min(max, Math.max(min, value)); }
+      function smooth(value) { const x = clamp(value); return x * x * (3 - 2 * x); }
+
+      function setVideoTime(seconds) {
+        const time = clamp(Number(seconds) || 0, 0, DURATION);
+        scenes.forEach((scene) => {
+          const start = Number(scene.dataset.start);
+          const end = Number(scene.dataset.end);
+          const fadeIn = smooth((time - start) / .55);
+          const fadeOut = smooth((end - time) / .55);
+          const opacity = Math.min(fadeIn, fadeOut);
+          const local = clamp((time - start) / (end - start));
+          scene.style.opacity = opacity;
+          scene.style.transform = `translateY(${(1 - smooth(local)) * 18}px) scale(${.992 + smooth(local) * .008})`;
+        });
+
+        const typeProgress = clamp((time - 17.1) / 3.7);
+        document.querySelector('#typedPrompt').textContent = promptText.slice(0, Math.floor(promptText.length * typeProgress));
+        document.querySelector('.cursor').style.opacity = Math.floor(time * 3) % 2 ? .15 : 1;
+        const reply = document.querySelector('#aiReply');
+        const replyProgress = clamp((time - 20.7) / .7);
+        reply.style.opacity = replyProgress;
+        reply.style.transform = `translateY(${(1 - smooth(replyProgress)) * 12}px)`;
+
+        const cards = [...document.querySelectorAll('.workflow-card')];
+        cards.forEach((card, index) => {
+          const p = clamp((time - 5.7 - index * .45) / .55);
+          card.style.opacity = p;
+          card.style.transform = `translateY(${(1 - smooth(p)) * 30}px)`;
+        });
+
+        const reportLines = [...document.querySelectorAll('.answer .report-line, .recap .report-line')];
+        reportLines.forEach((line, index) => {
+          const base = line.closest('.answer') ? 24.2 : 32.8;
+          const p = clamp((time - base - index * .22) / .45);
+          line.style.opacity = p;
+          line.style.transform = `translateX(${(1 - smooth(p)) * 16}px)`;
+        });
+
+        document.querySelector('#progressBar').style.width = `${(time / DURATION) * 100}%`;
+        window.__videoTime = time;
+      }
+
+      function fit() {
+        const scale = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+        film.style.transform = `scale(${scale})`;
+      }
+
+      window.setVideoTime = setVideoTime;
+      window.VIDEO_DURATION = DURATION;
+      window.addEventListener('resize', fit);
+      fit();
+      const hashTime = () => {
+        const match = location.hash.match(/(?:^#|&)t=([\d.]+)/);
+        if (match) setVideoTime(Number(match[1]));
+      };
+      window.addEventListener('hashchange', hashTime);
+
+      const params = new URLSearchParams(location.search);
+      if (params.has('t')) {
+        setVideoTime(Number(params.get('t')));
+      } else {
+        setVideoTime(0);
+      }
+      hashTime();
+      if (params.has('play')) {
+        const start = performance.now();
+        const tick = (now) => {
+          const seconds = ((now - start) / 1000) % DURATION;
+          setVideoTime(seconds);
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    </script>
+  </body>
+</html>
