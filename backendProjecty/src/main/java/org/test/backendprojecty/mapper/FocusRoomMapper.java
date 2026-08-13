@@ -32,6 +32,8 @@ public class FocusRoomMapper {
                 .currentRound(room.getCurrentRound())
                 .currentPhase(room.getCurrentPhase())
                 .phaseEndsAt(room.getPhaseEndsAt())
+                .paused(room.isPaused())
+                .pausedRemainingSeconds(room.getPausedRemainingSeconds())
                 .locked(room.isLocked())
                 .chatMode(room.getChatMode())
                 .scheduledFor(room.getScheduledFor())

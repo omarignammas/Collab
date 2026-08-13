@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'motion/react';
-import { DoorOpen, EyeOff, MonitorCog, Square } from 'lucide-react';
+import { DoorOpen, EyeOff, MonitorCog, Pause, Play, Square } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
   AlertDialog,
@@ -39,6 +39,7 @@ export const LiveSession = ({
   remaining,
   ringPercentage,
   onEnd,
+  onTogglePause,
   onLeave,
   sendHand,
   sendChat,
@@ -66,6 +67,7 @@ export const LiveSession = ({
             >
               <span className={`h-2 w-2 rounded-full ${inFocusBlock ? 'bg-destructive' : 'bg-[hsl(var(--status-in-progress-fg))]'}`} />
               {PHASE_LABEL[room.currentPhase] || room.currentPhase} · Round {room.currentRound}/{room.totalRounds}
+              {room.paused && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold normal-case text-primary">Paused</span>}
             </Motion.p>
           </AnimatePresence>
         </div>
@@ -92,29 +94,35 @@ export const LiveSession = ({
             Leave
           </Button>
           {isHost && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="text-destructive hover:text-destructive">
-                  <Square className="mr-2 h-4 w-4" />
-                  End Session
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>End this session for everyone?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This ends the session early for all participants. Everyone still focusing gets credit for the
-                    time elapsed in the current round, and the recap shows right away.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onEnd} className="bg-destructive hover:bg-destructive/90">
+            <>
+              <Button variant="outline" onClick={onTogglePause}>
+                {room.paused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+                {room.paused ? 'Resume' : 'Pause'}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="text-destructive hover:text-destructive">
+                    <Square className="mr-2 h-4 w-4" />
                     End Session
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>End this session for everyone?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This ends the session early for all participants. Everyone still focusing gets credit for the
+                      time elapsed in the current round, and the recap shows right away.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={onEnd} className="bg-destructive hover:bg-destructive/90">
+                      End Session
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
         </div>
 

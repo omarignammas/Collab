@@ -73,7 +73,7 @@ class AdminServiceTest {
         PaginationRequest request = PaginationRequest.builder().page(1).size(10).sortField("id").direction(Sort.Direction.ASC).build();
         Pageable pageable = PageRequest.of(0, 10);
         Page<User> userPage = new PageImpl<>(Arrays.asList(admin, regular), pageable, 2);
-        when(userRepository.findAll(any(Pageable.class))).thenReturn(userPage);
+        when(userRepository.findAdminVisibleUsers(any(Pageable.class))).thenReturn(userPage);
 
         PagingResult<UserResponse> result = adminService.listUsers(request);
 
@@ -86,8 +86,8 @@ class AdminServiceTest {
     @Test
     void getStats_ComputesTotalsAndDailyTrend() {
         when(userRepository.countByEnabledTrue()).thenReturn(42L);
-        when(userRepository.countByAccountStatus(AccountStatus.PENDING)).thenReturn(4L);
-        when(userRepository.countByAccountStatus(AccountStatus.SUSPENDED)).thenReturn(2L);
+        when(userRepository.countAdminVisibleByAccountStatus(AccountStatus.PENDING)).thenReturn(4L);
+        when(userRepository.countAdminVisibleByAccountStatus(AccountStatus.SUSPENDED)).thenReturn(2L);
         when(userRepository.countByEnabledTrueAndCreatedAtBetween(any(), any())).thenReturn(3L);
         when(waitlistEntryRepository.count()).thenReturn(7L);
 

@@ -50,7 +50,7 @@ public class AdminService {
     @Transactional(readOnly = true)
     public PagingResult<UserResponse> listUsers(PaginationRequest request) {
         Pageable pageable = PaginationUtils.getPageable(request);
-        Page<User> page = userRepository.findAll(pageable);
+        Page<User> page = userRepository.findAdminVisibleUsers(pageable);
 
         List<UserResponse> content = page.getContent().stream()
                 .map(this::toResponse)
@@ -62,8 +62,8 @@ public class AdminService {
     @Transactional(readOnly = true)
     public AdminStatsResponse getStats() {
         long totalUsers = userRepository.countByEnabledTrue();
-        long pendingUsers = userRepository.countByAccountStatus(AccountStatus.PENDING);
-        long suspendedUsers = userRepository.countByAccountStatus(AccountStatus.SUSPENDED);
+        long pendingUsers = userRepository.countAdminVisibleByAccountStatus(AccountStatus.PENDING);
+        long suspendedUsers = userRepository.countAdminVisibleByAccountStatus(AccountStatus.SUSPENDED);
         long waitlistCount = waitlistEntryRepository.count();
 
         LocalDate today = LocalDate.now();

@@ -62,6 +62,9 @@ public class FocusRoomSchedulerService {
 
     public void scheduleNextPhase(FocusRoom room) {
         cancelScheduledTask(room.getId());
+        if (room.isPaused() || room.getPhaseEndsAt() == null) {
+            return;
+        }
         Long roomId = room.getId();
         ScheduledFuture<?> future = taskScheduler.schedule(() -> advancePhase(roomId), room.getPhaseEndsAt());
         scheduledPhaseTasks.put(roomId, future);
@@ -77,7 +80,7 @@ public class FocusRoomSchedulerService {
     private void advancePhase(Long roomId) {
         transactionTemplate.executeWithoutResult(status -> {
             FocusRoom room = focusRoomRepository.findById(roomId).orElse(null);
-            if (room == null || room.getStatus() != FocusRoomStatus.ACTIVE) {
+            if (room == null || room.getStatus() != FocusRoomStatus.ACTIVE || room.isPaused()) {
                 return;
             }
 
@@ -101,6 +104,8 @@ public class FocusRoomSchedulerService {
         if (room.getCurrentRound() >= room.getTotalRounds()) {
             room.setStatus(FocusRoomStatus.COMPLETED);
             room.setPhaseEndsAt(null);
+            room.setPaused(false);
+            room.setPausedRemainingSeconds(null);
             for (FocusRoomParticipant p : participants) {
                 if (p.getStatus() == ParticipantStatus.FOCUSING || p.getStatus() == ParticipantStatus.ON_BREAK) {
                     p.setStatus(ParticipantStatus.COMPLETED);

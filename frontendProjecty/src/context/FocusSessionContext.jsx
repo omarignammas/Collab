@@ -68,12 +68,16 @@ export const FocusSessionProvider = ({ children }) => {
   // is on screen, so both LiveSession's UI and the tray/widget mirror the
   // exact same clock instead of each keeping their own.
   useEffect(() => {
-    if (!room || room.status !== 'ACTIVE' || !room.phaseEndsAt) {
+    if (!room || room.status !== 'ACTIVE') {
       setRemaining(0);
       return undefined;
     }
     const tick = () => {
-      const ms = new Date(room.phaseEndsAt).getTime() - Date.now();
+      const ms = room.paused
+        ? (room.pausedRemainingSeconds || 0) * 1000
+        : room.phaseEndsAt
+          ? new Date(room.phaseEndsAt).getTime() - Date.now()
+          : 0;
       setRemaining(ms);
 
       if (isTauri()) {
@@ -85,15 +89,17 @@ export const FocusSessionProvider = ({ children }) => {
           percentage: totalMs > 0 ? Math.max(0, Math.min(100, Math.round((ms / totalMs) * 100))) : 0,
           latestMessage: formatLatestMessage(lastMessage),
           isHost,
+          paused: Boolean(r.paused),
           roomCode: r.code,
         });
       }
     };
     tick();
+    if (room.paused || !room.phaseEndsAt) return undefined;
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.status, room?.phaseEndsAt, totalMs, isHost]);
+  }, [room?.status, room?.phaseEndsAt, room?.paused, room?.pausedRemainingSeconds, totalMs, isHost]);
 
   // Clears the tray/widget the moment there's genuinely nothing active to
   // show — reacts to the session's real state instead of a component
@@ -108,12 +114,12 @@ export const FocusSessionProvider = ({ children }) => {
   }, [room?.status]);
 
   useEffect(() => {
-    const canShare = Boolean(room?.status === 'ACTIVE' && room?.currentPhase === 'WORK' && shareFocusSignal && desktopTrackingEnabled);
+    const canShare = Boolean(room?.status === 'ACTIVE' && !room?.paused && room?.currentPhase === 'WORK' && shareFocusSignal && desktopTrackingEnabled);
     const nextSignal = canShare ? (currentApp?.category || 'Focusing') : null;
     if (lastFocusSignalRef.current === nextSignal) return;
     lastFocusSignalRef.current = nextSignal;
     if (activeRoomCode) socket.sendFocusSignal(nextSignal);
-  }, [activeRoomCode, currentApp?.category, desktopTrackingEnabled, room?.currentPhase, room?.status, shareFocusSignal, socket.sendFocusSignal]);
+  }, [activeRoomCode, currentApp?.category, desktopTrackingEnabled, room?.currentPhase, room?.paused, room?.status, shareFocusSignal, socket.sendFocusSignal]);
 
   useEffect(() => {
     if (!desktopTrackingEnabled) setShareFocusSignal(false);
@@ -123,11 +129,12 @@ export const FocusSessionProvider = ({ children }) => {
     const active = Boolean(
       desktopTrackingEnabled
       && room?.status === 'ACTIVE'
+      && !room?.paused
       && room?.currentPhase === 'WORK'
     );
     setFocusContext(active ? { active: true, roomCode: room.code } : null);
     return () => setFocusContext(null);
-  }, [desktopTrackingEnabled, room?.code, room?.currentPhase, room?.status, setFocusContext]);
+  }, [desktopTrackingEnabled, room?.code, room?.currentPhase, room?.paused, room?.status, setFocusContext]);
 
   const joinSession = useCallback((code) => {
     setActiveRoomCode((prev) => (prev === code ? prev : code));
@@ -161,6 +168,10 @@ export const FocusSessionProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket.sendEnd]);
 
+  const togglePause = useCallback(() => {
+    socket.sendPause();
+  }, [socket.sendPause]);
+
   // Widget popover actions land here — not tied to any page being mounted —
   // so Leave/End/voice-send and clicking the latest message all work no
   // matter what's currently showing in the main window.
@@ -174,6 +185,7 @@ export const FocusSessionProvider = ({ children }) => {
       const { action, text, route } = event.payload || {};
       if (action === 'leave') leaveRoom();
       if (action === 'end') endRoomSession();
+      if (action === 'pause') togglePause();
       // forceAi: the widget's mic is a dedicated "ask Collab" input, not a
       // shared group chat — a message sent from it should always get a
       // reply, regardless of wording or how Whisper transcribed the name.
@@ -195,8 +207,7 @@ export const FocusSessionProvider = ({ children }) => {
     return () => {
       unlisten.then((fn) => fn());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [endRoomSession, leaveRoom, navigate, socket.sendChat, togglePause]);
 
   const value = {
     activeRoomCode,
@@ -218,6 +229,7 @@ export const FocusSessionProvider = ({ children }) => {
     desktopTrackingEnabled,
     leaveRoom,
     endRoomSession,
+    togglePause,
     joinSession,
     disconnectIfDone,
   };

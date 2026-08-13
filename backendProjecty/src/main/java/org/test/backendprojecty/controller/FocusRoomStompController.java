@@ -35,6 +35,11 @@ public class FocusRoomStompController {
         focusRoomService.endSession(code, resolveUser(principal));
     }
 
+    @MessageMapping("/rooms/{code}/pause")
+    public void pause(@DestinationVariable String code, Principal principal) {
+        focusRoomService.togglePause(code, resolveUser(principal));
+    }
+
     @MessageMapping("/rooms/{code}/leave")
     public void leave(@DestinationVariable String code, Principal principal) {
         focusRoomService.leaveRoom(code, resolveUser(principal));

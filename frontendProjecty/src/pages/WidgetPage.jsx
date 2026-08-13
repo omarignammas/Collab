@@ -5,7 +5,6 @@ import { motion as Motion, AnimatePresence, useReducedMotion } from 'motion/reac
 import {
   AppWindow,
   Bell,
-  BellOff,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -20,6 +19,8 @@ import {
   MessageCircle,
   Mic,
   NotebookPen,
+  Pause,
+  Play,
   Send,
   Sparkles,
   Square,
@@ -310,8 +311,8 @@ const CompactFocusWidget = ({
   nudgesEnabled,
   nudgeIndex,
   nudgeVisible,
-  onToggleNudges,
   onDismissNudge,
+  onTogglePause,
   onExpand,
 }) => {
   const reduceMotion = useReducedMotion();
@@ -325,29 +326,32 @@ const CompactFocusWidget = ({
         initial={reduceMotion ? false : { opacity: 0, y: -8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-        className="flex h-[58px] shrink-0 items-center gap-1.5 rounded-[29px] border border-white/10 bg-[#242428]/95 p-1.5 text-white shadow-[0_14px_38px_rgba(0,0,0,0.32)] ring-1 ring-black/35 backdrop-blur-2xl"
+        className="flex h-[50px] shrink-0 items-center gap-1 rounded-[25px] border border-white/10 bg-[#242428]/95 p-1 text-white shadow-[0_12px_30px_rgba(0,0,0,0.3)] ring-1 ring-black/35 backdrop-blur-2xl"
       >
-        <div className="flex h-[46px] min-w-[210px] items-center justify-center gap-2.5 rounded-[24px] border border-white/10 bg-[#19191d]/90 px-4 shadow-inner">
-          <Clock3 className={`h-[17px] w-[17px] ${isBreak ? 'text-[#77b7ff]' : 'text-[#ec8a61]'}`} strokeWidth={2.35} />
-          <span className="font-numeric text-[21px] font-medium tabular-nums tracking-normal text-white">
+        <div className="flex h-[42px] min-w-[178px] items-center justify-center gap-2 rounded-[21px] border border-white/10 bg-[#19191d]/90 px-3 shadow-inner">
+          <span className={`flex h-5 w-5 items-center justify-center rounded-[7px] ${isBreak ? 'bg-[#77b7ff]' : 'bg-[#dc7954]'} text-white`}>
+            <FolderKanban className="h-3 w-3" strokeWidth={2.4} />
+          </span>
+          <span className="font-numeric text-[19px] font-medium tabular-nums tracking-normal text-white">
             {session.remainingLabel}
           </span>
         </div>
 
         <button
           type="button"
-          title={nudgesEnabled ? 'Mute focus nudges' : 'Enable focus nudges'}
-          onClick={onToggleNudges}
-          className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full border border-white/5 transition-colors ${nudgesEnabled ? 'bg-white/20 text-white hover:bg-white/25' : 'bg-white/10 text-white/55 hover:bg-white/15'}`}
+          title={!session.isHost ? 'Only the host can pause' : session.paused ? 'Resume session' : 'Pause session'}
+          onClick={onTogglePause}
+          disabled={!session.isHost}
+          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-white/5 bg-white/20 text-white transition-colors hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {nudgesEnabled ? <Bell className="h-[18px] w-[18px]" /> : <BellOff className="h-[18px] w-[18px]" />}
+          {session.paused ? <Play className="h-[17px] w-[17px] fill-current" /> : <Pause className="h-[17px] w-[17px] fill-current" />}
         </button>
 
         <button
           type="button"
           title="Open Focus Room controls"
           onClick={onExpand}
-          className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full border border-white/5 bg-white/20 text-white transition-colors hover:bg-white/25"
+          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-white/5 bg-white/20 text-white transition-colors hover:bg-white/25"
         >
           <ChevronDown className="h-5 w-5" strokeWidth={2.25} />
         </button>
@@ -361,14 +365,14 @@ const CompactFocusWidget = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className="mt-2 flex h-[50px] w-[410px] items-center gap-2.5 rounded-[25px] border border-white/10 bg-[#202024]/95 px-3.5 text-white shadow-[0_12px_30px_rgba(0,0,0,0.26)] ring-1 ring-black/25 backdrop-blur-2xl"
+            className="mt-2 flex h-[46px] w-[394px] items-center gap-2.5 rounded-[23px] border border-white/10 bg-[#202024]/95 px-3 text-white shadow-[0_12px_30px_rgba(0,0,0,0.26)] ring-1 ring-black/25 backdrop-blur-2xl"
           >
             <Sparkles className="h-4 w-4 shrink-0 text-[#ec8a61]" />
             <p className="min-w-0 flex-1 truncate text-[14px] font-medium tracking-normal text-white/95">{message}</p>
             <button
               type="button"
               onClick={onDismissNudge}
-              className="h-9 shrink-0 rounded-full bg-[#d77955] px-4 text-[13px] font-semibold text-white transition-colors hover:bg-[#e18460]"
+              className="h-8 shrink-0 rounded-full bg-[#d77955] px-3.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#e18460]"
             >
               {isBreak ? 'Rest' : 'Got it'}
             </button>
@@ -398,7 +402,7 @@ export const WidgetPage = () => {
   const [quickNoteText, setQuickNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [compactFocus, setCompactFocus] = useState(true);
-  const [nudgesEnabled, setNudgesEnabled] = useState(true);
+  const nudgesEnabled = true;
   const [nudgeVisible, setNudgeVisible] = useState(false);
   const [nudgeIndex, setNudgeIndex] = useState(0);
   const swipeStart = useRef(null);
@@ -646,6 +650,11 @@ export const WidgetPage = () => {
   }, [compactFocus, nudgesEnabled, session?.phaseLabel, session?.roomCode]);
 
   useEffect(() => {
+    if (!session || !compactFocus || quickNoteMode || voiceState !== 'idle' || assistantResult) return;
+    setWidgetDisplayMode(nudgeVisible && nudgesEnabled ? 'nudge' : 'compact');
+  }, [assistantResult, compactFocus, nudgeVisible, nudgesEnabled, quickNoteMode, session?.roomCode, setWidgetDisplayMode, voiceState]);
+
+  useEffect(() => {
     if (voiceState !== 'recording' || !recordingStartedAt) return undefined;
     const timer = setInterval(() => setElapsed(formatElapsed(recordingStartedAt)), 250);
     return () => clearInterval(timer);
@@ -804,11 +813,8 @@ export const WidgetPage = () => {
         nudgesEnabled={nudgesEnabled}
         nudgeIndex={nudgeIndex}
         nudgeVisible={nudgeVisible}
-        onToggleNudges={() => {
-          setNudgesEnabled((enabled) => !enabled);
-          setNudgeVisible(false);
-        }}
         onDismissNudge={() => setNudgeVisible(false)}
+        onTogglePause={() => sendAction('pause')}
         onExpand={expandFocusWidget}
       />
     );

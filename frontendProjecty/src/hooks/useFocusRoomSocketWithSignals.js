@@ -46,6 +46,7 @@ export const useFocusRoomSocketWithSignals = (code) => {
 
   const sendStart = useCallback(() => send('start'), [send]);
   const sendEnd = useCallback(() => send('end'), [send]);
+  const sendPause = useCallback(() => send('pause'), [send]);
   const sendLeave = useCallback(() => send('leave'), [send]);
   const sendHand = useCallback(() => send('hand'), [send]);
   const sendChat = useCallback((body, forceAi = false) => send('chat', { body, forceAi }), [send]);
@@ -53,7 +54,7 @@ export const useFocusRoomSocketWithSignals = (code) => {
   const sendFocusSignal = useCallback((signal) => send('focus-signal', { signal }), [send]);
   const clearError = useCallback(() => setError(''), []);
 
-  return { room, setRoom, connected, error, clearError, sendStart, sendEnd, sendLeave, sendHand, sendChat, sendChatMode, sendFocusSignal };
+  return { room, setRoom, connected, error, clearError, sendStart, sendEnd, sendPause, sendLeave, sendHand, sendChat, sendChatMode, sendFocusSignal };
 };
 
 export default useFocusRoomSocketWithSignals;

@@ -57,8 +57,15 @@ public class FocusRoomReportService {
             throw new BadRequestException("You don't have access to this room's report");
         }
 
-        FocusRoomReport report = reportRepository.findByRoomId(room.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("No report available for this session"));
+        FocusRoomReport report = reportRepository.findByRoomId(room.getId()).orElse(null);
+        if (report == null && room.getStatus() == FocusRoomStatus.COMPLETED && room.isAiReportEnabled()) {
+            return FocusRoomReportResponse.builder()
+                    .status(GenerationStatus.PENDING)
+                    .build();
+        }
+        if (report == null) {
+            throw new ResourceNotFoundException("No report available for this session");
+        }
 
         return FocusRoomReportResponse.builder()
                 .status(report.getStatus())

@@ -11,6 +11,7 @@ import org.test.backendprojecty.entity.FocusMessageType;
 import org.test.backendprojecty.entity.FocusRoom;
 import org.test.backendprojecty.entity.FocusRoomParticipant;
 import org.test.backendprojecty.entity.FocusRoomReport;
+import org.test.backendprojecty.entity.FocusRoomStatus;
 import org.test.backendprojecty.entity.NotificationType;
 import org.test.backendprojecty.entity.ParticipantStatus;
 import org.test.backendprojecty.entity.GenerationStatus;
@@ -236,5 +237,20 @@ class FocusRoomReportServiceTest {
         when(reportRepository.findByRoomId(10L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> service.getReport("ABC-123"));
+    }
+
+    @Test
+    void getReport_CompletedRoomBeforeAsyncInsert_ReturnsPending() {
+        room.setStatus(FocusRoomStatus.COMPLETED);
+        when(currentUserProvider.getCurrentUser()).thenReturn(host);
+        when(focusRoomRepository.findByCode("ABC-123")).thenReturn(Optional.of(room));
+        when(participantRepository.findByRoomIdAndUserId(10L, 1L)).thenReturn(Optional.of(
+                FocusRoomParticipant.builder().room(room).user(host).build()));
+        when(reportRepository.findByRoomId(10L)).thenReturn(Optional.empty());
+
+        FocusRoomReportResponse response = service.getReport("ABC-123");
+
+        assertEquals(GenerationStatus.PENDING, response.getStatus());
+        assertNull(response.getContent());
     }
 }

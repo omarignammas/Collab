@@ -385,6 +385,8 @@ public class FocusRoomService {
         room.setCurrentRound(1);
         room.setCurrentPhase(FocusPhase.WORK);
         room.setPhaseEndsAt(Instant.now().plusSeconds(room.getWorkMinutes() * 60L));
+        room.setPaused(false);
+        room.setPausedRemainingSeconds(null);
         room = focusRoomRepository.save(room);
 
         List<FocusRoomParticipant> participants = participantRepository.findByRoomIdOrderByCreatedAtAsc(room.getId());
@@ -416,10 +418,15 @@ public class FocusRoomService {
         // Credit whatever's elapsed in the current WORK block — a host ending
         // early shouldn't zero out real focus time just because the block
         // didn't run to completion the way advancePhase's full-block credit does.
-        if (room.getCurrentPhase() == FocusPhase.WORK && room.getPhaseEndsAt() != null) {
-            Instant phaseStartedAt = room.getPhaseEndsAt().minusSeconds(room.getWorkMinutes() * 60L);
+        if (room.getCurrentPhase() == FocusPhase.WORK) {
+            long totalSeconds = room.getWorkMinutes() * 60L;
+            long remainingSeconds = room.isPaused() && room.getPausedRemainingSeconds() != null
+                    ? room.getPausedRemainingSeconds()
+                    : room.getPhaseEndsAt() == null
+                    ? 0
+                    : Math.max(0, Duration.between(Instant.now(), room.getPhaseEndsAt()).getSeconds());
             long elapsedMinutes = Math.min(room.getWorkMinutes(),
-                    Math.max(0, Duration.between(phaseStartedAt, Instant.now()).toMinutes()));
+                    Math.max(0, (totalSeconds - remainingSeconds) / 60L));
             for (FocusRoomParticipant p : participants) {
                 if (p.getStatus() == ParticipantStatus.FOCUSING) {
                     p.setMinutesFocused(p.getMinutesFocused() + (int) elapsedMinutes);
@@ -434,43 +441,52 @@ public class FocusRoomService {
         }
         participantRepository.saveAll(participants);
 
-        // Explicit "End Session" deletes the room entirely below — no recap
-        // row lingers the way a naturally-completed session's does — so each
-        // participant's focused minutes get banked into a standalone ledger
-        // first. Stats' weekly/daily charts read this instead of the (now
-        // gone) room once it's deleted.
-        Instant endedAt = Instant.now();
-        for (FocusRoomParticipant p : participants) {
-            if (p.getMinutesFocused() > 0) {
-                focusTimeEntryRepository.save(FocusTimeEntry.builder()
-                        .user(p.getUser())
-                        .minutesFocused(p.getMinutesFocused())
-                        .earnedAt(endedAt)
-                        .build());
-            }
-        }
-
-        // Set on the in-memory entity only (not saved) so the final broadcast
-        // still shows a normal "session ended" snapshot for the recap screen
-        // already-connected clients render — no FocusRoomCompletedEvent, since
-        // there's no room left afterward for the async report job to find.
         room.setStatus(FocusRoomStatus.COMPLETED);
         room.setPhaseEndsAt(null);
+        room.setPaused(false);
+        room.setPausedRemainingSeconds(null);
 
         focusRoomSchedulerService.cancelScheduledTask(room.getId());
         postSystemMessage(room, "Host ended the session early");
+        focusRoomRepository.save(room);
         buildSnapshotAndBroadcast(room);
+        eventPublisher.publishEvent(new FocusRoomCompletedEvent(room.getId()));
+    }
 
-        // Delete everything the room owns, in FK-safe order, then the room
-        // itself — an explicitly ended session leaves nothing behind, unlike
-        // one that just runs its course and is kept for its recap.
-        messageRepository.deleteByRoomId(room.getId());
-        List<Note> roomNotes = noteRepository.findByRoomIdOrderByCreatedAtAsc(room.getId());
-        roomNotes.forEach(note -> note.setRoom(null));
-        noteRepository.saveAll(roomNotes);
-        focusRoomReportRepository.findByRoomId(room.getId()).ifPresent(focusRoomReportRepository::delete);
-        participantRepository.deleteAll(participants);
-        focusRoomRepository.delete(room);
+    @Transactional
+    public void togglePause(String code, User currentUser) {
+        FocusRoom room = findRoomOrThrow(code);
+
+        if (!room.getHost().getId().equals(currentUser.getId())) {
+            throw new BadRequestException("Only the host can pause the session");
+        }
+        if (room.getStatus() != FocusRoomStatus.ACTIVE) {
+            throw new BadRequestException("This session isn't active");
+        }
+
+        if (room.isPaused()) {
+            long remainingSeconds = Math.max(1L,
+                    room.getPausedRemainingSeconds() == null ? 1L : room.getPausedRemainingSeconds());
+            room.setPaused(false);
+            room.setPausedRemainingSeconds(null);
+            room.setPhaseEndsAt(Instant.now().plusSeconds(remainingSeconds));
+            focusRoomRepository.save(room);
+            postSystemMessage(room, "Session resumed");
+            buildSnapshotAndBroadcast(room);
+            focusRoomSchedulerService.scheduleNextPhase(room);
+            return;
+        }
+
+        long remainingSeconds = room.getPhaseEndsAt() == null
+                ? 1L
+                : Math.max(1L, Duration.between(Instant.now(), room.getPhaseEndsAt()).getSeconds());
+        focusRoomSchedulerService.cancelScheduledTask(room.getId());
+        room.setPaused(true);
+        room.setPausedRemainingSeconds(remainingSeconds);
+        room.setPhaseEndsAt(null);
+        focusRoomRepository.save(room);
+        postSystemMessage(room, "Session paused");
+        buildSnapshotAndBroadcast(room);
     }
 
     @Transactional
@@ -504,6 +520,8 @@ public class FocusRoomService {
         if (!anyoneStillAround && room.getStatus() != FocusRoomStatus.COMPLETED) {
             room.setStatus(FocusRoomStatus.COMPLETED);
             room.setPhaseEndsAt(null);
+            room.setPaused(false);
+            room.setPausedRemainingSeconds(null);
             focusRoomRepository.save(room);
             eventPublisher.publishEvent(new FocusRoomCompletedEvent(room.getId()));
             focusRoomSchedulerService.cancelScheduledTask(room.getId());

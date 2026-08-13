@@ -9,8 +9,10 @@ use tauri::{
   Position, Runtime, Size, WebviewWindow, WindowEvent,
 };
 
-const COMPACT_WIDGET_WIDTH: f64 = 420.0;
-const COMPACT_WIDGET_HEIGHT: f64 = 124.0;
+const COMPACT_WIDGET_WIDTH: f64 = 274.0;
+const COMPACT_WIDGET_HEIGHT: f64 = 54.0;
+const NUDGE_WIDGET_WIDTH: f64 = 404.0;
+const NUDGE_WIDGET_HEIGHT: f64 = 108.0;
 const EXPANDED_WIDGET_WIDTH: f64 = 300.0;
 const EXPANDED_WIDGET_HEIGHT: f64 = 340.0;
 
@@ -196,6 +198,14 @@ pub fn run() {
             );
             let _ = widget_for_mode.show();
             let _ = widget_for_mode.set_focus();
+          } else if mode.as_deref() == Some("nudge") {
+            expanded_for_mode.store(false, Ordering::Relaxed);
+            position_widget_top_center(
+              &widget_for_mode,
+              NUDGE_WIDGET_WIDTH,
+              NUDGE_WIDGET_HEIGHT,
+            );
+            let _ = widget_for_mode.show();
           } else if mode.as_deref() == Some("compact") {
             expanded_for_mode.store(false, Ordering::Relaxed);
             position_widget_top_center(

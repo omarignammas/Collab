@@ -30,12 +30,17 @@ export const SessionRecap = ({ room, userEmail }) => {
         if (cancelled) return;
         setReport(data);
         if (data.status === 'PENDING') {
-          timeoutId = setTimeout(poll, 3000);
+          timeoutId = setTimeout(poll, 1200);
         } else {
           setReportLoading(false);
         }
-      } catch {
-        if (!cancelled) setReportLoading(false);
+      } catch (error) {
+        if (cancelled) return;
+        if (error.response?.status === 404) {
+          timeoutId = setTimeout(poll, 1200);
+        } else {
+          setReportLoading(false);
+        }
       }
     };
 
@@ -82,7 +87,7 @@ export const SessionRecap = ({ room, userEmail }) => {
   };
 
   return (
-    <div className="mx-auto min-w-0 max-w-lg">
+    <div className="mx-auto w-full min-w-0 max-w-lg pb-8">
       <div className="flex flex-col items-center rounded-2xl border border-border/60 bg-card p-4 text-center shadow-ios sm:p-8">
         <CheckCircle2 className="mb-3 h-8 w-8 text-[hsl(var(--status-done-fg))]" />
         <h2 className="text-xl font-semibold text-foreground">Session Complete — {totalLabel}</h2>

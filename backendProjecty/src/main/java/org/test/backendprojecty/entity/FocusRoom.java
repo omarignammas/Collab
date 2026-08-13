@@ -28,7 +28,7 @@ public class FocusRoom {
     @Column(nullable = false, unique = true, length = 16)
     private String code;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -68,6 +68,12 @@ public class FocusRoom {
     private FocusPhase currentPhase;
 
     private Instant phaseEndsAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean paused = false;
+
+    private Long pausedRemainingSeconds;
 
     @Column(nullable = false)
     @Builder.Default

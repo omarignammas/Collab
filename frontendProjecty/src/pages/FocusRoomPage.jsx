@@ -27,6 +27,7 @@ export const FocusRoomPage = () => {
     sendChatMode,
     leaveRoom,
     endRoomSession,
+    togglePause,
     joinSession,
     disconnectIfDone,
     remaining,
@@ -124,7 +125,7 @@ export const FocusRoomPage = () => {
   }
 
   return (
-    <div className="accent-teal flex min-h-full w-full min-w-0 flex-col px-3 py-5 sm:px-4 sm:py-8 lg:h-full lg:min-h-0 lg:overflow-hidden lg:py-10">
+    <div className={`accent-teal flex min-h-full w-full min-w-0 flex-col px-3 py-5 sm:px-4 sm:py-8 lg:h-full lg:min-h-0 lg:py-10 ${room.status === 'COMPLETED' ? 'overflow-y-auto' : 'lg:overflow-hidden'}`}>
       {room.status === 'LOBBY' && (
         <RoomLobby
           room={room}
@@ -143,6 +144,7 @@ export const FocusRoomPage = () => {
           remaining={remaining}
           ringPercentage={ringPercentage}
           onEnd={endRoomSession}
+          onTogglePause={togglePause}
           onLeave={leaveRoom}
           sendHand={sendHand}
           sendChat={sendChat}

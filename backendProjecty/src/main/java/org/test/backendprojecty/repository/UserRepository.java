@@ -34,6 +34,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // hit FK constraints from tasks, notes, notifications, friend requests, and focus
     // room participation, none of which cascade from User.
     Page<User> findByEnabledTrue(Pageable pageable);
+    @Query("""
+            SELECT u FROM User u
+            WHERE LOWER(u.email) NOT LIKE 'deleted-user-%@deleted.collab.app'
+            """)
+    Page<User> findAdminVisibleUsers(Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(u) FROM User u
+            WHERE u.accountStatus = :accountStatus
+              AND LOWER(u.email) NOT LIKE 'deleted-user-%@deleted.collab.app'
+            """)
+    long countAdminVisibleByAccountStatus(@Param("accountStatus") AccountStatus accountStatus);
+
     long countByEnabledTrue();
     long countByEnabledTrueAndCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     List<User> findByEnabledTrueAndCreatedAtAfterOrderByCreatedAtAsc(LocalDateTime cutoff);

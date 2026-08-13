@@ -14,6 +14,7 @@ import org.test.backendprojecty.dtos.request.FocusRoomRequest;
 import org.test.backendprojecty.dtos.response.FocusRoomResponse;
 import org.test.backendprojecty.entity.*;
 import org.test.backendprojecty.event.AiChatRequestedEvent;
+import org.test.backendprojecty.event.FocusRoomCompletedEvent;
 import org.test.backendprojecty.exception.BadRequestException;
 import org.test.backendprojecty.exception.ResourceNotFoundException;
 import org.test.backendprojecty.mapper.FocusRoomMapper;
@@ -533,9 +534,45 @@ class FocusRoomServiceTest {
         assertEquals(0, guestParticipant.getMinutesFocused());
 
         verify(focusRoomSchedulerService).cancelScheduledTask(10L);
+        verify(focusRoomRepository, never()).delete(any(FocusRoom.class));
+        verify(eventPublisher).publishEvent(new FocusRoomCompletedEvent(10L));
         ArgumentCaptor<FocusRoomMessage> msgCaptor = ArgumentCaptor.forClass(FocusRoomMessage.class);
         verify(messageRepository).save(msgCaptor.capture());
         assertTrue(msgCaptor.getValue().getBody().contains("ended the session early"));
+    }
+
+    @Test
+    void togglePause_HostPausesAndResumesServerClock() {
+        FocusRoom room = lobbyRoom();
+        room.setStatus(FocusRoomStatus.ACTIVE);
+        room.setCurrentPhase(FocusPhase.WORK);
+        room.setPhaseEndsAt(Instant.now().plusSeconds(10 * 60L));
+        when(focusRoomRepository.findByCode("ABC-123")).thenReturn(Optional.of(room));
+
+        focusRoomService.togglePause("ABC-123", host);
+
+        assertTrue(room.isPaused());
+        assertNull(room.getPhaseEndsAt());
+        assertNotNull(room.getPausedRemainingSeconds());
+        assertTrue(room.getPausedRemainingSeconds() <= 10 * 60L);
+        verify(focusRoomSchedulerService).cancelScheduledTask(10L);
+
+        focusRoomService.togglePause("ABC-123", host);
+
+        assertFalse(room.isPaused());
+        assertNull(room.getPausedRemainingSeconds());
+        assertNotNull(room.getPhaseEndsAt());
+        verify(focusRoomSchedulerService).scheduleNextPhase(room);
+    }
+
+    @Test
+    void togglePause_NonHostCannotPause() {
+        FocusRoom room = lobbyRoom();
+        room.setStatus(FocusRoomStatus.ACTIVE);
+        when(focusRoomRepository.findByCode("ABC-123")).thenReturn(Optional.of(room));
+
+        assertThrows(BadRequestException.class, () -> focusRoomService.togglePause("ABC-123", guest));
+        verify(focusRoomSchedulerService, never()).cancelScheduledTask(anyLong());
     }
 
     @Test

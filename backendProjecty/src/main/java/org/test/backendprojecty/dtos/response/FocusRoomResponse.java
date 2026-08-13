@@ -32,6 +32,8 @@ public class FocusRoomResponse {
     private int currentRound;
     private FocusPhase currentPhase;
     private Instant phaseEndsAt;
+    private boolean paused;
+    private Long pausedRemainingSeconds;
     private boolean locked;
     private ChatMode chatMode;
     private Instant scheduledFor;
