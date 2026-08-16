@@ -21,6 +21,7 @@ import {
   NotebookPen,
   Pause,
   Play,
+  Plus,
   Send,
   Sparkles,
   Square,
@@ -40,8 +41,10 @@ import courseSummaryService from '../services/courseSummaryService';
 import focusRoomService from '../services/focusRoomService';
 import noteService from '../services/noteService';
 import notificationService from '../services/notificationService';
+import taskService from '../services/taskService';
 import voiceService from '../services/voiceService';
 import { formatTrackedTime } from '../services/activityTracking';
+import { TASK_STATUS, getTaskStatus } from '../lib/taskStatus';
 
 const sendAction = (action, extra) => {
   if (isTauri()) emit('widget-action', { action, ...extra });
@@ -68,6 +71,13 @@ const BREAK_NUDGES = [
   'Good work. Time for a real break?',
   'Step away for a moment. Your focus will thank you.',
   'Reset your eyes, shoulders, and attention.',
+];
+
+const WIDGET_TABS = [
+  { key: 'today', label: 'Today', icon: Clock3 },
+  { key: 'tasks', label: 'Tasks', icon: ListTodo },
+  { key: 'chat', label: 'Chat', icon: MessageCircle },
+  { key: 'notes', label: 'Notes', icon: NotebookPen },
 ];
 
 const formatAge = (createdAt) => {
@@ -269,14 +279,14 @@ const Composer = ({ value, onChange, onSubmit, onToggleVoice, voiceState }) => (
   </form>
 );
 
-const QuickNoteSurface = ({ value, onChange, onSave, onCancel, onToggleVoice, voiceState, saving }) => (
+const QuickNoteSurface = ({ value, onChange, onSave, onCancel, onToggleVoice, voiceState, saving, recentNotes }) => (
   <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col gap-3">
     <div className="flex items-start justify-between gap-3">
       <div>
         <p className="text-[15px] font-semibold text-foreground">Quick note</p>
         <p className="mt-0.5 text-[10px] text-muted-foreground">Write naturally. Collab will format and organize it.</p>
       </div>
-      <button type="button" onClick={onCancel} className="text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground">Cancel</button>
+      {value.trim() && <button type="button" onClick={onCancel} className="text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground">Clear</button>}
     </div>
 
     <div className="relative min-h-0 flex-1">
@@ -299,12 +309,176 @@ const QuickNoteSurface = ({ value, onChange, onSave, onCancel, onToggleVoice, vo
       </button>
     </div>
 
-    <Button type="submit" size="sm" className="h-10 w-full rounded-full" disabled={!value.trim() || saving || voiceState !== 'idle'}>
+    <Button type="submit" size="sm" className="h-10 w-full rounded-full shrink-0" disabled={!value.trim() || saving || voiceState !== 'idle'}>
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
       {saving ? 'Saving...' : 'Save and organize'}
     </Button>
+
+    {!value.trim() && recentNotes?.length > 0 && (
+      <div className="shrink-0 border-t border-border/50 pt-2.5">
+        <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Recent</p>
+        <div className="space-y-1">
+          {recentNotes.map((note) => (
+            <button
+              type="button"
+              key={note.id}
+              onClick={() => sendAction('open-route', { route: '/notes' })}
+              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-muted/50"
+            >
+              <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="truncate text-[10.5px] text-foreground/85">{note.title}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
   </form>
 );
+
+const TASK_FILTER_ALL = 'ALL';
+const TASK_FILTER_UNSORTED = 'UNSORTED';
+
+const TasksTab = ({ tasks, loaded, filter, onFilterChange, onComplete, draft, onDraftChange, onAdd, adding }) => {
+  const openTasks = tasks.filter((t) => getTaskStatus(t) !== TASK_STATUS.DONE);
+  const projects = Array.from(new Set(openTasks.map((t) => t.courseTitle).filter(Boolean)));
+  const hasUnsorted = openTasks.some((t) => !t.courseTitle);
+  const filtered = openTasks.filter((t) => {
+    if (filter === TASK_FILTER_ALL) return true;
+    if (filter === TASK_FILTER_UNSORTED) return !t.courseTitle;
+    return t.courseTitle === filter;
+  });
+
+  const chipClass = (active) => `shrink-0 truncate rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${active ? 'bg-primary text-primary-foreground' : 'bg-secondary/70 text-muted-foreground hover:text-foreground'}`;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+      {(projects.length > 0 || hasUnsorted) && (
+        <div className="thin-scrollbar flex shrink-0 gap-1.5 overflow-x-auto pb-0.5">
+          <button type="button" onClick={() => onFilterChange(TASK_FILTER_ALL)} className={chipClass(filter === TASK_FILTER_ALL)}>All</button>
+          {hasUnsorted && <button type="button" onClick={() => onFilterChange(TASK_FILTER_UNSORTED)} className={chipClass(filter === TASK_FILTER_UNSORTED)}>Unsorted</button>}
+          {projects.map((project) => (
+            <button type="button" key={project} title={project} onClick={() => onFilterChange(project)} className={`max-w-[110px] ${chipClass(filter === project)}`}>{project}</button>
+          ))}
+        </div>
+      )}
+
+      <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
+        {!loaded ? (
+          <div className="space-y-1.5">{[0, 1, 2].map((i) => <div key={i} className="h-9 animate-pulse rounded-xl bg-muted/40" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center text-muted-foreground">
+            <CheckCircle2 className="h-6 w-6 text-[hsl(var(--chart-4))]" />
+            <p className="text-xs">Nothing here. Add one below.</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {filtered.map((task) => (
+              <div key={task.id} className="group flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors hover:bg-muted/40">
+                <button
+                  type="button"
+                  onClick={() => onComplete(task.id)}
+                  title="Mark complete"
+                  className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-muted-foreground/40 transition-colors group-hover:border-primary"
+                />
+                <span className="min-w-0 flex-1 truncate text-[12px] text-foreground/90">{task.title}</span>
+                {task.courseTitle && (
+                  <span className="max-w-[80px] shrink-0 truncate rounded-md bg-secondary/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground" title={task.courseTitle}>
+                    {task.courseTitle}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={onAdd} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/70 bg-background/45 p-1.5 shadow-sm">
+        <Plus className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <input
+          value={draft}
+          onChange={(event) => onDraftChange(event.target.value)}
+          placeholder="Add a task"
+          aria-label="Add a task"
+          className="min-w-0 flex-1 bg-transparent px-1 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        {draft.trim() && (
+          <button type="submit" disabled={adding} title="Add task" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:opacity-60">
+            {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+          </button>
+        )}
+      </form>
+    </div>
+  );
+};
+
+const ChatTab = ({ session, messages, currentUserEmail, draft, onDraftChange, onSend }) => {
+  const scrollRef = useRef(null);
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  if (!session) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2.5 px-4 text-center text-muted-foreground">
+        <MessageCircle className="h-6 w-6" />
+        <p className="text-xs font-medium text-foreground/80">No active Focus Room</p>
+        <p className="max-w-[210px] text-[10.5px] leading-relaxed">Chat lives inside Focus Rooms — start or join one to talk with your group. Collab jumps in when it is useful.</p>
+        <button
+          type="button"
+          onClick={() => sendAction('open-route', { route: '/focus-rooms' })}
+          className="mt-1 rounded-full bg-primary px-3.5 py-1.5 text-[11px] font-semibold text-primary-foreground transition-transform hover:scale-105"
+        >
+          Open Focus Rooms
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
+        {messages.length === 0 ? (
+          <p className="pt-6 text-center text-[10.5px] text-muted-foreground">Say hello to the room.</p>
+        ) : (
+          messages.map((message) => {
+            if (message.type === 'SYSTEM') {
+              return <p key={message.id} className="text-center text-[9.5px] text-muted-foreground/80">{message.body}</p>;
+            }
+            if (message.type === 'AI') {
+              return (
+                <div key={message.id} className="rounded-xl bg-primary/10 px-2.5 py-2">
+                  <div className="mb-0.5 flex items-center gap-1 text-[9.5px] font-semibold text-primary"><Sparkles className="h-2.5 w-2.5" />Collab</div>
+                  <p className="whitespace-pre-line text-[11.5px] leading-relaxed text-foreground/90">{message.body}</p>
+                </div>
+              );
+            }
+            const isMine = message.senderEmail === currentUserEmail;
+            return (
+              <div key={message.id} className="px-1">
+                <span className="text-[10px] font-semibold text-foreground/85">{isMine ? 'You' : message.senderName}</span>
+                <span className="ml-1.5 text-[11.5px] text-foreground/80">{message.body}</span>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <form onSubmit={onSend} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/70 bg-background/45 p-1.5 shadow-sm">
+        <input
+          value={draft}
+          onChange={(event) => onDraftChange(event.target.value)}
+          placeholder="Message the room..."
+          aria-label="Message the room"
+          className="min-w-0 flex-1 bg-transparent px-2 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        {draft.trim() && (
+          <button type="submit" title="Send" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105">
+            <Send className="h-3 w-3" />
+          </button>
+        )}
+      </form>
+    </div>
+  );
+};
 
 const CompactFocusWidget = ({
   session,
@@ -395,23 +569,37 @@ export const WidgetPage = () => {
   const [elapsed, setElapsed] = useState('00:00');
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [speaking, setSpeaking] = useState(false);
-  const [panel, setPanel] = useState('overview');
+  const [panel, setPanel] = useState('today');
   const [conversation, setConversation] = useState([]);
   const [dailyFocusMinutes, setDailyFocusMinutes] = useState(0);
-  const [quickNoteMode, setQuickNoteMode] = useState(false);
   const [quickNoteText, setQuickNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [recentNotes, setRecentNotes] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [taskFilter, setTaskFilter] = useState('ALL');
+  const [taskDraft, setTaskDraft] = useState('');
+  const [addingTask, setAddingTask] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatDraft, setChatDraft] = useState('');
   const [compactFocus, setCompactFocus] = useState(true);
   const nudgesEnabled = true;
   const [nudgeVisible, setNudgeVisible] = useState(false);
   const [nudgeIndex, setNudgeIndex] = useState(0);
-  const swipeStart = useRef(null);
   const sessionRef = useRef(null);
+  const panelRef = useRef('today');
   const lastSpokenText = useRef('');
   const spokenAudioRef = useRef(null);
   const researchPollToken = useRef(0);
-  const quickNoteModeRef = useRef(false);
   const discardTranscriptionRef = useRef(false);
+
+  // goToPanel keeps panelRef synchronously correct — handleTranscribed below
+  // reads it from inside a callback that useVoiceRecorder may have captured
+  // on an earlier render, so a plain `panel` closure read risks being stale.
+  const goToPanel = useCallback((next) => {
+    panelRef.current = next;
+    setPanel(next);
+  }, []);
 
   const setWidgetDisplayMode = useCallback((mode) => {
     if (isTauri()) emit('widget-display-mode', { mode });
@@ -420,16 +608,16 @@ export const WidgetPage = () => {
   const expandFocusWidget = useCallback(() => {
     setCompactFocus(false);
     setNudgeVisible(false);
-    setPanel('pomodoro');
+    goToPanel('today');
     setWidgetDisplayMode('expanded');
-  }, [setWidgetDisplayMode]);
+  }, [goToPanel, setWidgetDisplayMode]);
 
   const collapseFocusWidget = useCallback(() => {
     setCompactFocus(true);
     setAssistantResult(null);
-    setPanel('pomodoro');
+    goToPanel('today');
     setWidgetDisplayMode('compact');
-  }, [setWidgetDisplayMode]);
+  }, [goToPanel, setWidgetDisplayMode]);
 
   const refreshDigest = useCallback(async () => {
     refreshActivity();
@@ -520,7 +708,7 @@ export const WidgetPage = () => {
       discardTranscriptionRef.current = false;
       return;
     }
-    if (quickNoteModeRef.current) {
+    if (panelRef.current === 'notes') {
       setQuickNoteText((current) => (current ? `${current} ${text}` : text));
       return;
     }
@@ -560,15 +748,12 @@ export const WidgetPage = () => {
     }
     setAssistantResult(null);
     if (sessionRef.current) expandFocusWidget();
-    quickNoteModeRef.current = true;
-    setQuickNoteMode(true);
-  }, [expandFocusWidget, stopRecording, voiceState]);
+    goToPanel('notes');
+  }, [expandFocusWidget, goToPanel, stopRecording, voiceState]);
 
-  const cancelQuickNote = () => {
-    quickNoteModeRef.current = false;
+  const clearNoteDraft = () => {
     if (voiceState === 'recording' || voiceState === 'transcribing') discardTranscriptionRef.current = true;
     if (voiceState === 'recording') stopRecording();
-    setQuickNoteMode(false);
     setQuickNoteText('');
   };
 
@@ -581,13 +766,8 @@ export const WidgetPage = () => {
       const words = body.replace(/\s+/g, ' ').split(' ');
       const title = `${words.slice(0, 7).join(' ')}${words.length > 7 ? '…' : ''}`;
       const note = await noteService.createNote({ title, body, tags: [], savedUrl: null, courseId: null, taskId: null, roomCode: null });
-      const text = 'Saved. I’m organizing the note into a theme, topics, links, and time references.';
-      const source = { id: `note-${note.id}`, type: 'NOTE', title: note.title, route: '/notes', excerpt: body.slice(0, 140) };
-      quickNoteModeRef.current = false;
-      setQuickNoteMode(false);
       setQuickNoteText('');
-      setAssistantResult({ text, kind: 'success', sources: [source] });
-      setConversation((previous) => [...previous, { role: 'assistant', text, sources: [source] }].slice(-8));
+      setRecentNotes((previous) => [note, ...previous].slice(0, 3));
     } catch (error) {
       setAssistantResult({ text: error.response?.data?.message || 'I could not save that note. Please try again.', kind: 'error' });
     } finally {
@@ -595,26 +775,57 @@ export const WidgetPage = () => {
     }
   };
 
-  const handleTouchStart = (event) => {
-    const touch = event.changedTouches[0];
-    swipeStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  const fetchTasks = useCallback(async () => {
+    try {
+      const result = await taskService.getAllTasks({ size: 100, sortField: 'dueDate', direction: 'ASC' });
+      setTasks(result.content || []);
+    } catch {
+      // Leave the previous list on screen rather than clearing it on a blip.
+    } finally {
+      setTasksLoaded(true);
+    }
+  }, []);
+
+  const fetchRecentNotes = useCallback(async () => {
+    try {
+      const result = await noteService.getAllNotes({ size: 3, sortField: 'createdAt', direction: 'DESC' });
+      setRecentNotes(result.content || []);
+    } catch {
+      // Quiet failure — the composer above still works either way.
+    }
+  }, []);
+
+  const completeTask = async (taskId) => {
+    setTasks((previous) => previous.filter((t) => t.id !== taskId));
+    try {
+      await taskService.markTaskCompleted(taskId);
+    } catch {
+      fetchTasks();
+    }
   };
 
-  const handleTouchEnd = (event) => {
-    if (!session || swipeStart.current == null) return;
-    const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - swipeStart.current.x;
-    const deltaY = touch.clientY - swipeStart.current.y;
-    swipeStart.current = null;
-    if (Math.abs(deltaX) < 72 || Math.abs(deltaX) < Math.abs(deltaY) * 1.4) return;
-    if (deltaX < 0) setPanel('notifications');
-    if (deltaX > 0) setPanel('pomodoro');
+  const addTask = async (event) => {
+    event.preventDefault();
+    const title = taskDraft.trim();
+    if (!title) return;
+    setAddingTask(true);
+    try {
+      const created = await taskService.createTask({ title });
+      setTasks((previous) => [created, ...previous]);
+      setTaskDraft('');
+    } catch {
+      // Leave the draft in place so the attempt isn't silently lost.
+    } finally {
+      setAddingTask(false);
+    }
   };
 
-  const handleWheel = (event) => {
-    if (!session || Math.abs(event.deltaX) < 40 || Math.abs(event.deltaX) < Math.abs(event.deltaY) * 2.5) return;
-    if (event.deltaX < 0) setPanel('notifications');
-    if (event.deltaX > 0) setPanel('pomodoro');
+  const sendChatMessage = (event) => {
+    event.preventDefault();
+    const text = chatDraft.trim();
+    if (!text) return;
+    setChatDraft('');
+    sendAction('chat-send', { text });
   };
 
   useEffect(() => {
@@ -650,9 +861,9 @@ export const WidgetPage = () => {
   }, [compactFocus, nudgesEnabled, session?.phaseLabel, session?.roomCode]);
 
   useEffect(() => {
-    if (!session || !compactFocus || quickNoteMode || voiceState !== 'idle' || assistantResult) return;
+    if (!session || !compactFocus || panel === 'notes' || voiceState !== 'idle' || assistantResult) return;
     setWidgetDisplayMode(nudgeVisible && nudgesEnabled ? 'nudge' : 'compact');
-  }, [assistantResult, compactFocus, nudgeVisible, nudgesEnabled, quickNoteMode, session?.roomCode, setWidgetDisplayMode, voiceState]);
+  }, [assistantResult, compactFocus, nudgeVisible, nudgesEnabled, panel, session?.roomCode, setWidgetDisplayMode, voiceState]);
 
   useEffect(() => {
     if (voiceState !== 'recording' || !recordingStartedAt) return undefined;
@@ -753,7 +964,7 @@ export const WidgetPage = () => {
       setSession(event.payload);
       if (wasInactive) {
         setCompactFocus(true);
-        setPanel('pomodoro');
+        goToPanel('today');
       }
     });
     const unlistenClear = listen('session-cleared', () => {
@@ -761,14 +972,19 @@ export const WidgetPage = () => {
       setSession(null);
       setCompactFocus(true);
       setNudgeVisible(false);
-      setPanel('overview');
+      setChatMessages([]);
+      goToPanel('today');
       refreshDigest();
+    });
+    const unlistenMessages = listen('session-messages', (event) => {
+      setChatMessages(event.payload?.messages || []);
     });
     return () => {
       unlistenUpdate.then((fn) => fn());
       unlistenClear.then((fn) => fn());
+      unlistenMessages.then((fn) => fn());
     };
-  }, [refreshDigest]);
+  }, [goToPanel, refreshDigest]);
 
   useEffect(() => {
     if (!isTauri()) return undefined;
@@ -776,18 +992,18 @@ export const WidgetPage = () => {
       setCompactFocus(true);
       setAssistantResult(null);
       setNudgeVisible(false);
-      setPanel('pomodoro');
+      goToPanel('today');
     });
     const unlistenExpanded = listen('widget-expanded', () => {
       setCompactFocus(false);
       setNudgeVisible(false);
-      setPanel('pomodoro');
+      goToPanel('today');
     });
     return () => {
       unlistenCompact.then((fn) => fn());
       unlistenExpanded.then((fn) => fn());
     };
-  }, []);
+  }, [goToPanel]);
 
   useEffect(() => {
     if (!isTauri()) return undefined;
@@ -803,10 +1019,18 @@ export const WidgetPage = () => {
     return () => unlisten.then((fn) => fn());
   }, [beginQuickNote]);
 
+  // Refetches each time the tab is opened rather than caching — the lists are
+  // small, and this keeps the widget honest about what changed elsewhere in
+  // the app without needing invalidation logic.
+  useEffect(() => {
+    if (panel === 'tasks') fetchTasks();
+    if (panel === 'notes') fetchRecentNotes();
+  }, [panel, fetchTasks, fetchRecentNotes]);
+
   const topApp = activitySummary.todayFocusApps?.[0] || activitySummary.todayTopApps?.[0] || null;
   const firstName = user?.firstName?.trim() || 'there';
 
-  if (session && compactFocus && !quickNoteMode && voiceState === 'idle' && !assistantResult) {
+  if (session && compactFocus && panel !== 'notes' && voiceState === 'idle' && !assistantResult) {
     return (
       <CompactFocusWidget
         session={session}
@@ -821,35 +1045,48 @@ export const WidgetPage = () => {
   }
 
   const header = (
-    <div className="flex shrink-0 items-center justify-between">
-      <div className="flex items-center gap-1.5">
-        <div className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-primary text-primary-foreground">
-          <FolderKanban className="h-3 w-3" />
-        </div>
-        <span className="text-[11px] font-semibold text-foreground">Collab</span>
-        </div>
-      {session && (
-        <div className="ml-2 flex flex-1 items-center gap-1" aria-label="Widget pages">
-          <button type="button" title="Pomodoro" onClick={() => setPanel('pomodoro')} className={`h-1.5 rounded-full transition-all ${panel === 'pomodoro' ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
-          <button type="button" title="Notifications" onClick={() => setPanel('notifications')} className={`h-1.5 rounded-full transition-all ${panel === 'notifications' ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
-        </div>
-      )}
-      <div className="ml-auto flex items-center gap-1.5">
-        <button type="button" title="Quick note" onClick={beginQuickNote} className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors ${quickNoteMode ? 'bg-primary text-primary-foreground' : 'bg-secondary/70 text-muted-foreground hover:text-foreground'}`}><NotebookPen className="h-3.5 w-3.5" /></button>
-        {session ? (
-          <>
-            <button type="button" title="Minimize Focus Room controls" onClick={collapseFocusWidget} className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground"><ChevronUp className="h-3.5 w-3.5" /></button>
-            <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</div>
-          </>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <span className="font-numeric text-[9px] text-muted-foreground">{format(new Date(), 'EEE d')}</span>
-            <button type="button" title={panel === 'notifications' ? 'Back to today' : 'Notifications'} onClick={() => setPanel((current) => current === 'notifications' ? 'overview' : 'notifications')} className="relative flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground">
-              <Bell className="h-3.5 w-3.5" />
-              {unreadCount > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
-            </button>
+    <div className="flex shrink-0 flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-primary text-primary-foreground">
+            <FolderKanban className="h-3 w-3" />
           </div>
-        )}
+          <span className="text-[11px] font-semibold text-foreground">Collab</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {session ? (
+            <>
+              <button type="button" title="Minimize Focus Room controls" onClick={collapseFocusWidget} className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground"><ChevronUp className="h-3.5 w-3.5" /></button>
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--chart-4))]" />Live</div>
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className="font-numeric text-[9px] text-muted-foreground">{format(new Date(), 'EEE d')}</span>
+              <button type="button" title={panel === 'notifications' ? 'Back to today' : 'Notifications'} onClick={() => goToPanel(panel === 'notifications' ? 'today' : 'notifications')} className="relative flex h-7 w-7 items-center justify-center rounded-full bg-secondary/70 text-muted-foreground transition-colors hover:text-foreground">
+                <Bell className="h-3.5 w-3.5" />
+                {unreadCount > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1" aria-label="Widget sections">
+        {WIDGET_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = panel === tab.key || (tab.key === 'today' && panel === 'notifications');
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => { setAssistantResult(null); goToPanel(tab.key); }}
+              className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-colors ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span className="text-[9px] font-medium">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -889,14 +1126,49 @@ export const WidgetPage = () => {
     </div>
   ) : null;
 
+  const showGlobalComposer = voiceState === 'idle' && panel !== 'notes' && panel !== 'tasks' && panel !== 'chat'
+    && (!session || panel === 'notifications' || assistantResult);
+
   return (
     <div className="h-screen w-screen bg-transparent">
-      <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/75 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onWheel={handleWheel} style={{ touchAction: 'pan-y' }}>
+      <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/75 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5">
         {header}
 
-        {quickNoteMode ? <QuickNoteSurface value={quickNoteText} onChange={setQuickNoteText} onSave={saveQuickNote} onCancel={cancelQuickNote} onToggleVoice={toggleVoice} voiceState={voiceState} saving={savingNote} /> : assistantView || (panel === 'notifications' ? (
+        {assistantView || (panel === 'tasks' ? (
+          <TasksTab
+            tasks={tasks}
+            loaded={tasksLoaded}
+            filter={taskFilter}
+            onFilterChange={setTaskFilter}
+            onComplete={completeTask}
+            draft={taskDraft}
+            onDraftChange={setTaskDraft}
+            onAdd={addTask}
+            adding={addingTask}
+          />
+        ) : panel === 'chat' ? (
+          <ChatTab
+            session={session}
+            messages={chatMessages}
+            currentUserEmail={user?.email}
+            draft={chatDraft}
+            onDraftChange={setChatDraft}
+            onSend={sendChatMessage}
+          />
+        ) : panel === 'notes' ? (
+          <QuickNoteSurface
+            value={quickNoteText}
+            onChange={setQuickNoteText}
+            onSave={saveQuickNote}
+            onCancel={clearNoteDraft}
+            onToggleVoice={toggleVoice}
+            voiceState={voiceState}
+            saving={savingNote}
+            recentNotes={recentNotes}
+          />
+        ) : panel === 'notifications' ? (
           <>
-            <div className="animate-in fade-in slide-in-from-left-2 flex shrink-0 items-end justify-between duration-200"><div><p className="text-sm font-semibold text-foreground">Recent activity</p><p className="mt-0.5 text-[10px] text-muted-foreground">{session ? 'Swipe right for your Pomodoro' : 'Your latest signals from Collab'}</p></div><Bell className="mb-1 h-4 w-4 text-muted-foreground" /></div>
+            <div className="animate-in fade-in slide-in-from-left-2 flex shrink-0 items-end justify-between duration-200"><div><p className="text-sm font-semibold text-foreground">Recent activity</p><p className="mt-0.5 text-[10px] text-muted-foreground">Your latest signals from Collab</p></div><Bell className="mb-1 h-4 w-4 text-muted-foreground" /></div>
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5"><NotificationRows notifications={notifications} /></div>
           </>
         ) : session ? (
@@ -927,7 +1199,7 @@ export const WidgetPage = () => {
           />
         ))}
 
-        {!quickNoteMode && (!session || panel === 'notifications' || assistantResult) && voiceState === 'idle' && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
+        {showGlobalComposer && <Composer value={command} onChange={setCommand} onSubmit={(event) => { event.preventDefault(); runAssistant(command); }} onToggleVoice={toggleVoice} voiceState={voiceState} />}
       </div>
     </div>
   );

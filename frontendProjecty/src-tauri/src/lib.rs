@@ -13,8 +13,10 @@ const COMPACT_WIDGET_WIDTH: f64 = 274.0;
 const COMPACT_WIDGET_HEIGHT: f64 = 54.0;
 const NUDGE_WIDGET_WIDTH: f64 = 404.0;
 const NUDGE_WIDGET_HEIGHT: f64 = 108.0;
-const EXPANDED_WIDGET_WIDTH: f64 = 300.0;
-const EXPANDED_WIDGET_HEIGHT: f64 = 340.0;
+// Wide/tall enough for the Tasks/Chat/Notes tab bar and real list content —
+// still clearly a popover, not a window.
+const EXPANDED_WIDGET_WIDTH: f64 = 368.0;
+const EXPANDED_WIDGET_HEIGHT: f64 = 480.0;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]

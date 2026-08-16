@@ -101,6 +101,32 @@ export const FocusSessionProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.status, room?.phaseEndsAt, room?.paused, room?.pausedRemainingSeconds, totalMs, isHost]);
 
+  // Bridges the room's chat thread to the widget the same way the countdown
+  // is bridged above — the widget window has no STOMP connection of its own
+  // (deliberately, so there's only ever one socket for the whole app), so it
+  // can only ever know about messages that get forwarded through here. Keyed
+  // off the last message's id + count instead of firing every tick, since
+  // messages change far less often than the countdown does.
+  const lastBridgedMessageRef = useRef(null);
+  useEffect(() => {
+    if (!isTauri()) return;
+    const messages = room?.recentMessages || [];
+    const last = messages[messages.length - 1];
+    const key = `${messages.length}:${last?.id ?? ''}`;
+    if (lastBridgedMessageRef.current === key) return;
+    lastBridgedMessageRef.current = key;
+    emit('session-messages', {
+      messages: messages.slice(-40).map((m) => ({
+        id: m.id,
+        type: m.type,
+        senderName: m.senderName,
+        senderEmail: m.senderEmail,
+        body: m.body,
+        createdAt: m.createdAt,
+      })),
+    });
+  }, [room?.recentMessages]);
+
   // Clears the tray/widget the moment there's genuinely nothing active to
   // show — reacts to the session's real state instead of a component
   // unmounting, which is what incorrectly fired this on every page change.
@@ -108,6 +134,7 @@ export const FocusSessionProvider = ({ children }) => {
   useEffect(() => {
     const isActiveNow = Boolean(room && room.status === 'ACTIVE');
     if (wasActiveRef.current && !isActiveNow && isTauri()) {
+      lastBridgedMessageRef.current = null;
       emit('session-cleared');
     }
     wasActiveRef.current = isActiveNow;
@@ -190,6 +217,10 @@ export const FocusSessionProvider = ({ children }) => {
       // shared group chat — a message sent from it should always get a
       // reply, regardless of wording or how Whisper transcribed the name.
       if (action === 'send-message' && text) socket.sendChat(text, true);
+      // The widget's Chat tab is the real group thread, same as typing in
+      // ChatPanel — Collab only replies if the room's own trigger logic
+      // decides to, so this is never forced.
+      if (action === 'chat-send' && text) socket.sendChat(text, false);
       if (action === 'open-chat' && roomRef.current) {
         const mainWindow = await Window.getByLabel('main');
         await mainWindow?.show();
