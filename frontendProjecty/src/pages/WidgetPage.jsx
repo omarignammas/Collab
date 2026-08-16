@@ -211,11 +211,13 @@ const DailyOverview = ({ firstName, topApp, focusMinutes, focusedAppSeconds }) =
 
       <div className="grid grid-cols-2 overflow-hidden rounded-[20px] border border-border/60 bg-background/30 shadow-sm backdrop-blur-xl">
         <div className="min-w-0 border-r border-border/60 p-2.5">
-          <div className="mb-2 flex h-7 w-7 items-center justify-center overflow-hidden rounded-[9px] bg-secondary text-foreground">
-            {topApp?.iconDataUrl
-              ? <img src={topApp.iconDataUrl} alt="" className="h-full w-full object-cover" />
-              : <AppWindow className="h-4 w-4" />}
-          </div>
+          {topApp?.iconDataUrl ? (
+            <img src={topApp.iconDataUrl} alt="" className="mb-2 h-8 w-8" />
+          ) : (
+            <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-[9px] bg-secondary text-foreground">
+              <AppWindow className="h-4 w-4" />
+            </div>
+          )}
           <p className="text-[9px] font-semibold uppercase text-muted-foreground">{hasFocusOverlap ? 'Focus app' : 'Most used'}</p>
           <p className="mt-1 truncate text-[12px] font-semibold text-foreground" title={topApp?.name || 'No activity yet'}>
             {topApp?.name || 'No activity yet'}

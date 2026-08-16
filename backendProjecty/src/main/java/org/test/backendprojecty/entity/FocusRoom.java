@@ -28,7 +28,7 @@ public class FocusRoom {
     @Column(nullable = false, unique = true, length = 16)
     private String code;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
