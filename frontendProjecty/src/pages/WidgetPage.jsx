@@ -75,7 +75,7 @@ const BREAK_NUDGES = [
 
 const WIDGET_TABS = [
   { key: 'today', label: 'Today', icon: Clock3 },
-  { key: 'tasks', label: 'Tasks', icon: ListTodo },
+  { key: 'tasks', label: 'Tasks', icon: FolderKanban },
   { key: 'chat', label: 'Chat', icon: MessageCircle },
   { key: 'notes', label: 'Notes', icon: NotebookPen },
 ];
@@ -224,7 +224,7 @@ const DailyOverview = ({ firstName, topApp, focusMinutes, focusedAppSeconds }) =
         </div>
 
         <div className="min-w-0 p-2.5">
-          <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-[9px] bg-primary/10 text-primary">
+          <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#dc7954]/10 text-[#dc7954]">
             <Clock3 className="h-4 w-4" />
           </div>
           <p className="text-[9px] font-semibold uppercase text-muted-foreground">Daily focus</p>
@@ -250,17 +250,17 @@ const NotificationRows = ({ notifications }) => {
 };
 
 const Composer = ({ value, onChange, onSubmit, onToggleVoice, voiceState }) => (
-  <form onSubmit={onSubmit} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/70 bg-background/45 p-1.5 shadow-sm">
-    <MessageCircle className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+  <form onSubmit={onSubmit} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/50 bg-background/35 p-1.5">
+    <MessageCircle className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
     <input
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder="Ask Collab..."
       aria-label="Ask Collab"
-      className="min-w-0 flex-1 bg-transparent px-1 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+      className="min-w-0 flex-1 bg-transparent px-1 text-[11px] text-foreground outline-none placeholder:text-muted-foreground/60"
     />
     {value.trim() && (
-      <button type="submit" title="Send command" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105">
+      <button type="submit" title="Send command" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dc7954] text-white transition-transform hover:scale-105">
         <Send className="h-3 w-3" />
       </button>
     )}
@@ -270,7 +270,7 @@ const Composer = ({ value, onChange, onSubmit, onToggleVoice, voiceState }) => (
       disabled={voiceState === 'transcribing'}
       title={voiceState === 'recording' ? 'Finish voice command' : 'Speak to Collab'}
       className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
-        voiceState === 'recording' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-foreground hover:bg-secondary/70'
+        voiceState === 'recording' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary/60 text-foreground hover:bg-secondary/80'
       }`}
     >
       {voiceState === 'recording' && <span className="absolute inset-0 animate-ping rounded-full bg-destructive/30" />}
@@ -309,7 +309,7 @@ const QuickNoteSurface = ({ value, onChange, onSave, onCancel, onToggleVoice, vo
       </button>
     </div>
 
-    <Button type="submit" size="sm" className="h-10 w-full rounded-full shrink-0" disabled={!value.trim() || saving || voiceState !== 'idle'}>
+    <Button type="submit" size="sm" className="h-10 w-full rounded-full shrink-0 bg-[#dc7954] text-white hover:bg-[#e18a60]" disabled={!value.trim() || saving || voiceState !== 'idle'}>
       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
       {saving ? 'Saving...' : 'Save and organize'}
     </Button>
@@ -348,61 +348,72 @@ const TasksTab = ({ tasks, loaded, filter, onFilterChange, onComplete, draft, on
     return t.courseTitle === filter;
   });
 
-  const chipClass = (active) => `shrink-0 truncate rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${active ? 'bg-primary text-primary-foreground' : 'bg-secondary/70 text-muted-foreground hover:text-foreground'}`;
+  const filterClass = (active) => `relative shrink-0 truncate pb-1.5 text-[11px] font-medium transition-colors ${active ? 'text-[#dc7954]' : 'text-muted-foreground hover:text-foreground'}`;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+    <div className="flex min-h-0 flex-1 flex-col">
       {(projects.length > 0 || hasUnsorted) && (
-        <div className="thin-scrollbar flex shrink-0 gap-1.5 overflow-x-auto pb-0.5">
-          <button type="button" onClick={() => onFilterChange(TASK_FILTER_ALL)} className={chipClass(filter === TASK_FILTER_ALL)}>All</button>
-          {hasUnsorted && <button type="button" onClick={() => onFilterChange(TASK_FILTER_UNSORTED)} className={chipClass(filter === TASK_FILTER_UNSORTED)}>Unsorted</button>}
+        <div className="thin-scrollbar flex shrink-0 gap-4 overflow-x-auto border-b border-border/40 px-0.5">
+          <button type="button" onClick={() => onFilterChange(TASK_FILTER_ALL)} className={filterClass(filter === TASK_FILTER_ALL)}>
+            All
+            {filter === TASK_FILTER_ALL && <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-[#dc7954]" />}
+          </button>
+          {hasUnsorted && (
+            <button type="button" onClick={() => onFilterChange(TASK_FILTER_UNSORTED)} className={filterClass(filter === TASK_FILTER_UNSORTED)}>
+              Unsorted
+              {filter === TASK_FILTER_UNSORTED && <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-[#dc7954]" />}
+            </button>
+          )}
           {projects.map((project) => (
-            <button type="button" key={project} title={project} onClick={() => onFilterChange(project)} className={`max-w-[110px] ${chipClass(filter === project)}`}>{project}</button>
+            <button type="button" key={project} title={project} onClick={() => onFilterChange(project)} className={`max-w-[100px] ${filterClass(filter === project)}`}>
+              {project}
+              {filter === project && <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-[#dc7954]" />}
+            </button>
           ))}
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
+      <div className="min-h-0 flex-1 overflow-y-auto pt-1">
         {!loaded ? (
-          <div className="space-y-1.5">{[0, 1, 2].map((i) => <div key={i} className="h-9 animate-pulse rounded-xl bg-muted/40" />)}</div>
+          <div className="space-y-1">{[0, 1, 2].map((i) => <div key={i} className="h-11 animate-pulse rounded-lg bg-muted/30" />)}</div>
         ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center text-muted-foreground">
             <CheckCircle2 className="h-6 w-6 text-[hsl(var(--chart-4))]" />
             <p className="text-xs">Nothing here. Add one below.</p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="divide-y divide-border/30">
             {filtered.map((task) => (
-              <div key={task.id} className="group flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 transition-colors hover:bg-muted/40">
+              <div key={task.id} className="group flex items-center gap-3 px-0.5 py-2.5 transition-colors">
                 <button
                   type="button"
                   onClick={() => onComplete(task.id)}
                   title="Mark complete"
-                  className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-muted-foreground/40 transition-colors group-hover:border-primary"
+                  className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-muted-foreground/35 transition-colors group-hover:border-[#dc7954]"
                 />
-                <span className="min-w-0 flex-1 truncate text-[12px] text-foreground/90">{task.title}</span>
-                {task.courseTitle && (
-                  <span className="max-w-[80px] shrink-0 truncate rounded-md bg-secondary/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground" title={task.courseTitle}>
-                    {task.courseTitle}
-                  </span>
-                )}
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground/90">{task.title}</span>
+                <span className="shrink-0 text-[11px] font-medium text-[#dc7954]/80">+10 XP</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <form onSubmit={onAdd} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/70 bg-background/45 p-1.5 shadow-sm">
-        <Plus className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <button type="button" onClick={() => document.getElementById('widget-task-input')?.focus()} className="flex shrink-0 items-center gap-2 px-0.5 py-2 text-[12px] text-muted-foreground transition-colors hover:text-foreground">
+        <Plus className="h-3.5 w-3.5" />
+        Add task
+      </button>
+      <form onSubmit={onAdd} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/50 bg-background/35 p-1.5">
         <input
+          id="widget-task-input"
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
-          placeholder="Add a task"
+          placeholder="What needs to be done?"
           aria-label="Add a task"
-          className="min-w-0 flex-1 bg-transparent px-1 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent px-2 text-[11px] text-foreground outline-none placeholder:text-muted-foreground/60"
         />
         {draft.trim() && (
-          <button type="submit" disabled={adding} title="Add task" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105 disabled:opacity-60">
+          <button type="submit" disabled={adding} title="Add task" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dc7954] text-white transition-transform hover:scale-105 disabled:opacity-60">
             {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
           </button>
         )}
@@ -426,7 +437,7 @@ const ChatTab = ({ session, messages, currentUserEmail, draft, onDraftChange, on
         <button
           type="button"
           onClick={() => sendAction('open-route', { route: '/focus-rooms' })}
-          className="mt-1 rounded-full bg-primary px-3.5 py-1.5 text-[11px] font-semibold text-primary-foreground transition-transform hover:scale-105"
+          className="mt-1 rounded-full bg-[#dc7954] px-3.5 py-1.5 text-[11px] font-semibold text-white transition-transform hover:scale-105 hover:bg-[#e18a60]"
         >
           Open Focus Rooms
         </button>
@@ -462,16 +473,16 @@ const ChatTab = ({ session, messages, currentUserEmail, draft, onDraftChange, on
           })
         )}
       </div>
-      <form onSubmit={onSend} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/70 bg-background/45 p-1.5 shadow-sm">
+      <form onSubmit={onSend} className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-border/50 bg-background/35 p-1.5">
         <input
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           placeholder="Message the room..."
           aria-label="Message the room"
-          className="min-w-0 flex-1 bg-transparent px-2 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent px-2 text-[11px] text-foreground outline-none placeholder:text-muted-foreground/60"
         />
         {draft.trim() && (
-          <button type="submit" title="Send" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105">
+          <button type="submit" title="Send" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#dc7954] text-white transition-transform hover:scale-105">
             <Send className="h-3 w-3" />
           </button>
         )}
@@ -502,7 +513,7 @@ const CompactFocusWidget = ({
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
         className="flex h-[50px] shrink-0 items-center gap-1 rounded-[25px] border border-white/10 bg-[#242428]/95 p-1 text-white shadow-[0_12px_30px_rgba(0,0,0,0.3)] ring-1 ring-black/35 backdrop-blur-2xl"
       >
-        <div className="flex h-[42px] min-w-[178px] items-center justify-center gap-2 rounded-[21px] border border-white/10 bg-[#19191d]/90 px-3 shadow-inner">
+        <div className="flex h-[42px] min-w-[178px] items-center justify-center gap-2.5 rounded-[21px] border border-white/10 bg-[#19191d]/90 px-3.5 shadow-inner">
           <span className={`flex h-5 w-5 items-center justify-center rounded-[7px] ${isBreak ? 'bg-[#77b7ff]' : 'bg-[#dc7954]'} text-white`}>
             <FolderKanban className="h-3 w-3" strokeWidth={2.4} />
           </span>
@@ -539,16 +550,16 @@ const CompactFocusWidget = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className="mt-2 flex h-[46px] w-[394px] items-center gap-2.5 rounded-[23px] border border-white/10 bg-[#202024]/95 px-3 text-white shadow-[0_12px_30px_rgba(0,0,0,0.26)] ring-1 ring-black/25 backdrop-blur-2xl"
+            className="mt-2 flex h-[46px] w-[394px] items-center gap-2 rounded-[23px] border border-white/8 bg-[#2a2a2e]/95 px-2.5 text-white shadow-[0_12px_30px_rgba(0,0,0,0.26)] ring-1 ring-black/25 backdrop-blur-2xl"
           >
-            <Sparkles className="h-4 w-4 shrink-0 text-[#ec8a61]" />
-            <p className="min-w-0 flex-1 truncate text-[14px] font-medium tracking-normal text-white/95">{message}</p>
+            <span className="shrink-0 rounded-full bg-[#dc7954]/15 px-2 py-0.5 text-[11px] font-bold text-[#dc7954]">+200 XP</span>
+            <p className="min-w-0 flex-1 truncate text-[13px] font-medium tracking-normal text-white/90">{message}</p>
             <button
               type="button"
               onClick={onDismissNudge}
-              className="h-8 shrink-0 rounded-full bg-[#d77955] px-3.5 text-[12px] font-semibold text-white transition-colors hover:bg-[#e18460]"
+              className="h-[30px] shrink-0 rounded-full bg-[#dc7954] px-4 text-[12px] font-semibold text-white transition-colors hover:bg-[#e18a60]"
             >
-              {isBreak ? 'Rest' : 'Got it'}
+              Accept
             </button>
           </Motion.div>
         )}
@@ -1044,11 +1055,13 @@ export const WidgetPage = () => {
     );
   }
 
+  const taskCount = tasks.filter((t) => getTaskStatus(t) !== TASK_STATUS.DONE).length;
+
   const header = (
-    <div className="flex shrink-0 flex-col gap-2">
-      <div className="flex items-center justify-between">
+    <div className="flex shrink-0 flex-col gap-0">
+      <div className="flex items-center justify-between pb-2.5">
         <div className="flex items-center gap-1.5">
-          <div className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-primary text-primary-foreground">
+          <div className="flex h-5 w-5 items-center justify-center rounded-[7px] bg-[#dc7954] text-white">
             <FolderKanban className="h-3 w-3" />
           </div>
           <span className="text-[11px] font-semibold text-foreground">Collab</span>
@@ -1071,7 +1084,7 @@ export const WidgetPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-1" aria-label="Widget sections">
+      <div className="flex items-center border-b border-border/40" aria-label="Widget sections">
         {WIDGET_TABS.map((tab) => {
           const Icon = tab.icon;
           const active = panel === tab.key || (tab.key === 'today' && panel === 'notifications');
@@ -1080,10 +1093,14 @@ export const WidgetPage = () => {
               key={tab.key}
               type="button"
               onClick={() => { setAssistantResult(null); goToPanel(tab.key); }}
-              className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-colors ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+              className={`relative flex items-center gap-1.5 px-3 pb-2.5 pt-1 text-[12px] font-medium transition-colors ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
             >
               <Icon className="h-3.5 w-3.5" />
-              <span className="text-[9px] font-medium">{tab.label}</span>
+              <span>{tab.label}</span>
+              {tab.key === 'tasks' && taskCount > 0 && (
+                <span className="text-[10px] text-muted-foreground">·{taskCount}</span>
+              )}
+              {active && <span className="absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-[#dc7954]" />}
             </button>
           );
         })}
@@ -1131,7 +1148,7 @@ export const WidgetPage = () => {
 
   return (
     <div className="h-screen w-screen bg-transparent">
-      <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/75 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5">
+      <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-border/50 bg-card/80 p-4 shadow-ios-lg ring-1 ring-black/5 backdrop-blur-2xl dark:ring-white/5">
         {header}
 
         {assistantView || (panel === 'tasks' ? (
