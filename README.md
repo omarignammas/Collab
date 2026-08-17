@@ -85,31 +85,48 @@ The landing page also ships its own animated product tour (`components/landing/S
 ## Architecture
 
 ```text
-projectii/
-├── backendProjecty/        # Spring Boot 3.2 API (Java 17)
-│   ├── config/              # Security, CORS, WebSocket/STOMP, scheduling, static file serving
-│   ├── controller/          # REST + STOMP message-mapped controllers
-│   ├── dtos/                # Request/response DTOs
-│   ├── entity/               # JPA entities (User, Course, Term, Task, Note, FocusRoom, FriendRequest, Notification, ...)
-│   ├── mapper/               # Entity <-> DTO mapping
-│   ├── repository/           # Spring Data JPA repositories
-│   ├── security/             # JWT filter, STOMP auth interceptor, current-user resolution
-│   └── service/               # Business logic
+projectii-desktop/
+├── backendProjecty/          # Spring Boot 3.2 API (Java 17)
+│   ├── config/                # Security, CORS, WebSocket/STOMP, scheduling, static file serving
+│   ├── controller/            # REST + STOMP message-mapped controllers
+│   ├── dtos/                  # Request/response DTOs
+│   ├── entity/                # JPA entities (User, Course, Term, Task, Note, FocusRoom, FriendRequest, Notification, ...)
+│   ├── mapper/                # Entity <-> DTO mapping
+│   ├── repository/            # Spring Data JPA repositories
+│   ├── security/               # JWT filter, STOMP auth interceptor, current-user resolution
+│   └── service/                 # Business logic
 │
-├── frontendProjecty/        # React 19 + Vite SPA
-│   └── src/
-│       ├── components/       # UI, grouped by feature (tasks, courses, focus-rooms, notes, notifications, landing, ...)
-│       ├── pages/            # Route-level pages
-│       ├── hooks/            # useAuth, useFocusRoomSocket, useNotificationSocket, ...
-│       ├── services/         # Axios API clients, one per resource
-│       └── context/          # Auth context
+├── frontendProjecty/          # React 19 + Vite SPA — same web app, also the Tauri UI layer
+│   ├── src/
+│   │   ├── components/         # UI, grouped by feature (tasks, courses, focus-rooms, notes, notifications, landing, ...)
+│   │   ├── pages/               # Route-level pages, including WidgetPage.jsx (see below)
+│   │   ├── hooks/                # useAuth, useFocusRoomSocket, useNotificationSocket, useVoiceRecorder, ...
+│   │   ├── services/             # Axios API clients, one per resource
+│   │   └── context/               # Auth + activity-tracking context
+│   │
+│   └── src-tauri/               # Tauri v2 desktop shell (Rust) — wraps the same React app as a native macOS app
+│       ├── src/
+│       │   ├── main.rs           # Entry point
+│       │   └── lib.rs            # Window management: main window, tray icon/menu, the always-on-top widget window,
+│       │                          #   global shortcuts, native notifications, Tauri <-> webview event bridge
+│       ├── capabilities/         # Tauri IPC permission manifest
+│       ├── icons/                 # App + tray icon assets
+│       └── tauri.conf.json        # Window definitions (main + widget), bundle/DMG config
 │
-├── docker-compose.yml        # Postgres + backend + frontend, for local all-in-one runs
-├── render.yaml                # Render Blueprint for the backend (Docker web service)
-└── netlify.toml                # Netlify build config for the frontend (SPA redirects)
+├── docker-compose.yml          # Postgres + backend + frontend, for local all-in-one runs
+├── render.yaml                  # Render Blueprint for the backend (Docker web service)
+└── netlify.toml                  # Netlify build config for the web frontend (SPA redirects)
 ```
 
 **Real-time design:** two independent STOMP connections rather than one shared client. Focus Rooms use a per-room connection where the server owns all state (phase timing, round count, chat) and broadcasts the full room snapshot on every change — the client never computes timer state itself beyond a local countdown display. Notifications use a second, session-wide connection subscribed to a per-user queue, so they arrive on any page, not just inside a room.
+
+**Desktop app & widget:** the same React SPA runs inside a Tauri v2 shell for macOS, adding a persistent menu-bar tray and a small always-on-top widget window (`pages/WidgetPage.jsx`) alongside the full main window — each is its own independent webview running the same app bundle, not a shared JS runtime. Focus Room session state and chat are kept in sync between the two via Tauri events emitted from the main window's STOMP connection (`session-update`, `session-messages`), so the widget never opens a second WebSocket. Activity tracking is the exception: each window independently calls a native `frontmost_app` Tauri command to read the current foreground app and its icon straight from the OS, without going through the backend at all. The widget surfaces:
+- **Today** — daily focus time, most-used app, and an "Ask Collab" command bar
+- **Tasks** — quick add/complete without opening the main window
+- **Chat** — the active Focus Room's live chat, bridged in from the main window's STOMP connection
+- **Notes** — voice or text quick-capture, saved straight to the backend
+
+A compact pill mode collapses the widget to just the running Pomodoro timer with pause/expand controls when a Focus Room session is active.
 
 ---
 
