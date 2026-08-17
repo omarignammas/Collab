@@ -16,4 +16,5 @@ public class CircleMemberResponse {
     private String avatarUrl;
     private CircleMemberStatus status;
     private boolean owner;
+    private int focusMinutesThisWeek;
 }

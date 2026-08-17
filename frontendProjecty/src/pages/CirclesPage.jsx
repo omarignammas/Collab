@@ -1,26 +1,25 @@
 import { createElement, useEffect, useMemo, useState } from 'react';
 import {
-  Award,
+  Bug,
   Check,
-  CheckCircle2,
   Clock3,
-  Flag,
-  Flame,
-  HeartHandshake,
+  HelpCircle,
+  Lightbulb,
   LockKeyhole,
-  Medal,
+  Megaphone,
   Plus,
-  RotateCcw,
+  Send,
   Settings2,
-  ShieldCheck,
-  Sparkles,
-  Target,
+  Trash2,
   UsersRound,
   X,
 } from 'lucide-react';
+import { format, isToday, isYesterday } from 'date-fns';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { Textarea } from '../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { CircularProgress } from '../components/shared/CircularProgress';
 import Avatar from '../components/shared/Avatar';
 import CreateCircleDialog from '../components/circles/CreateCircleDialog';
@@ -29,210 +28,66 @@ import circleService from '../services/circleService';
 import { useToast } from '../hooks/use-toast';
 import { useAuth } from '../hooks/useAuth';
 
-const formatMinutes = (minutes = 0) => {
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
-};
+const formatMinutes = (minutes = 0) => minutes >= 60
+  ? `${Math.floor(minutes / 60)}h ${minutes % 60 ? `${minutes % 60}m` : ''}`.trim()
+  : `${minutes}m`;
 
-const Metric = ({ label, value, detail, icon, color }) => (
-  <div className="min-w-0 border-l border-border/60 px-4 first:border-l-0 first:pl-0 sm:px-5">
-    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-      {createElement(icon, { className: `h-3.5 w-3.5 ${color}` })}
-      <span className="truncate">{label}</span>
-    </div>
-    <p className="mt-2 font-numeric text-xl font-bold text-foreground sm:text-2xl">{value}</p>
-    <p className="mt-1 truncate text-[11px] text-muted-foreground">{detail}</p>
-  </div>
-);
-
-const recognitionMeta = {
-  consistent: { icon: Flame, color: 'text-primary', surface: 'bg-primary/10' },
-  teammate: { icon: UsersRound, color: 'text-[hsl(var(--chart-3))]', surface: 'bg-[hsl(var(--chart-3))]/10' },
-  comeback: { icon: RotateCcw, color: 'text-[hsl(var(--chart-1))]', surface: 'bg-[hsl(var(--chart-1))]/10' },
-  helpful: { icon: HeartHandshake, color: 'text-[hsl(var(--chart-4))]', surface: 'bg-[hsl(var(--chart-4))]/10' },
-  finisher: { icon: Flag, color: 'text-[hsl(var(--chart-2))]', surface: 'bg-[hsl(var(--chart-2))]/10' },
-};
-
-const recognitionTitles = [
-  ['consistent', 'Most consistent'],
-  ['teammate', 'Best teammate'],
-  ['comeback', 'Biggest comeback'],
-  ['helpful', 'Most helpful'],
-  ['finisher', 'Strongest finisher'],
+const NOTE_TYPES = [
+  { value: 'UPDATE', label: 'Update', icon: Megaphone, color: 'text-[hsl(var(--chart-3))]', surface: 'bg-[hsl(var(--chart-3))]/10' },
+  { value: 'BUG', label: 'Bug', icon: Bug, color: 'text-destructive', surface: 'bg-destructive/10' },
+  { value: 'IDEA', label: 'Idea', icon: Lightbulb, color: 'text-primary', surface: 'bg-primary/10' },
+  { value: 'QUESTION', label: 'Question', icon: HelpCircle, color: 'text-[hsl(var(--chart-1))]', surface: 'bg-[hsl(var(--chart-1))]/10' },
 ];
+const noteTypeMeta = Object.fromEntries(NOTE_TYPES.map((entry) => [entry.value, entry]));
 
-const badgeMeta = {
-  'founding-circle': { icon: Sparkles, color: 'text-primary', surface: 'bg-primary/10' },
-  'full-circle': { icon: UsersRound, color: 'text-[hsl(var(--chart-3))]', surface: 'bg-[hsl(var(--chart-3))]/10' },
-  'focus-pact': { icon: Target, color: 'text-[hsl(var(--chart-1))]', surface: 'bg-[hsl(var(--chart-1))]/10' },
-  'finish-line': { icon: Flag, color: 'text-[hsl(var(--chart-2))]', surface: 'bg-[hsl(var(--chart-2))]/10' },
-  'learning-loop': { icon: HeartHandshake, color: 'text-[hsl(var(--chart-4))]', surface: 'bg-[hsl(var(--chart-4))]/10' },
-  'momentum-70': { icon: Medal, color: 'text-primary', surface: 'bg-primary/10' },
+const formatNoteDay = (noteDate) => {
+  const date = new Date(`${noteDate}T00:00:00`);
+  if (isToday(date)) return 'Today';
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'EEEE, MMM d');
 };
 
-const getFallbackRecognitions = () => recognitionTitles.map(([key, title]) => ({
-  key,
-  title,
-  unlocked: false,
-  reason: "Waiting for this week's shared signal.",
-}));
-
-const getFallbackBadges = (circle) => [
-  { key: 'founding-circle', name: 'Founding Circle', description: 'Created a trusted space in Collab.', earned: true, progress: 1, goal: 1 },
-  { key: 'full-circle', name: 'Full Circle', description: 'Bring three trusted people into the rhythm.', earned: circle.activeMemberCount >= 3, progress: Math.min(circle.activeMemberCount, 3), goal: 3 },
-  { key: 'focus-pact', name: 'Focus Pact', description: 'Protect two collective focus hours in one week.', earned: circle.focusMinutesThisWeek >= 120, progress: Math.min(circle.focusMinutesThisWeek, 120), goal: 120 },
-  { key: 'finish-line', name: 'Finish Line', description: 'Complete five commitments together in one week.', earned: circle.completedTasksThisWeek >= 5, progress: Math.min(circle.completedTasksThisWeek, 5), goal: 5 },
-  { key: 'learning-loop', name: 'Learning Loop', description: 'Complete five review sessions in one week.', earned: circle.quizAttemptsThisWeek >= 5, progress: Math.min(circle.quizAttemptsThisWeek, 5), goal: 5 },
-  { key: 'momentum-70', name: 'Momentum 70', description: 'Reach 70% collective momentum in one week.', earned: circle.collectiveMomentum >= 70, progress: Math.min(circle.collectiveMomentum, 70), goal: 70 },
-];
-
-const TeamPulse = ({ circle }) => {
-  const memberGoal = Math.max(circle.activeMemberCount, 1) * 5;
-  const signals = [
-    { label: 'Focus pact', value: formatMinutes(circle.focusMinutesThisWeek), progress: Math.min(100, Math.round((circle.focusMinutesThisWeek / 120) * 100)), color: 'bg-primary' },
-    { label: 'Commitments finished', value: circle.completedTasksThisWeek, progress: Math.min(100, Math.round((circle.completedTasksThisWeek / 5) * 100)), color: 'bg-[hsl(var(--chart-3))]' },
-    { label: 'Active-day rhythm', value: circle.activeDaysThisWeek, progress: Math.min(100, Math.round((circle.activeDaysThisWeek / memberGoal) * 100)), color: 'bg-[hsl(var(--chart-1))]' },
-    { label: 'Review loop', value: circle.quizAttemptsThisWeek, progress: Math.min(100, Math.round((circle.quizAttemptsThisWeek / 5) * 100)), color: 'bg-[hsl(var(--chart-4))]' },
-  ];
-
-  return (
-    <Card className="border-border/80 bg-card shadow-ios-sm">
-      <CardContent className="p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="section-header">Team pulse</p>
-            <p className="mt-1 text-sm text-muted-foreground">Collective progress toward a healthy week.</p>
-          </div>
-          <Badge variant="outline" className="shrink-0">This week</Badge>
-        </div>
-        <div className="mt-7 space-y-5">
-          {signals.map((signal) => (
-            <div key={signal.label}>
-              <div className="mb-2 flex items-center justify-between gap-4 text-sm">
-                <span className="font-medium text-foreground">{signal.label}</span>
-                <span className="font-numeric text-xs font-semibold text-muted-foreground">{signal.value}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div className={`h-full rounded-full transition-[width] duration-700 ${signal.color}`} style={{ width: `${signal.progress}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-7 border-t border-border/60 pt-5">
-          <div className="flex items-start gap-3">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {circle.collectiveMomentum >= 70
-                ? 'Your Circle is protecting a strong, balanced rhythm. Keep finishing what you start.'
-                : circle.collectiveMomentum >= 35
-                  ? 'Momentum is building. One more shared win can move the whole Circle forward.'
-                  : 'Start small together: one focus room and one finished commitment can restart the week.'}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-const WeeklyRecognitions = ({ recognitions }) => (
+const CircleHeader = ({ circle, canManage, onManage }) => (
   <Card className="border-border/80 bg-card shadow-ios-sm">
-    <CardContent className="p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="section-header">Weekly recognitions</p>
-          <p className="mt-1 text-sm text-muted-foreground">Meaningful contribution, without an hours leaderboard.</p>
+    <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <div className="flex min-w-0 items-center gap-4">
+        <CircularProgress percentage={circle.collectiveMomentum} size={64} strokeWidth={6} color="orange">
+          <span className="font-numeric text-sm font-bold text-foreground">{circle.collectiveMomentum}%</span>
+        </CircularProgress>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-xl font-semibold text-foreground">{circle.name}</h2>
+            <Badge variant="outline" className="border-[hsl(var(--chart-3))]/30 bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]"><LockKeyhole className="mr-1 h-3 w-3" />Private</Badge>
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground"><b className="text-foreground">{circle.completedTasksThisWeek}</b> finished this week</span>
+            <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground"><b className="text-foreground">{formatMinutes(circle.focusMinutesThisWeek)}</b> focused this week</span>
+          </div>
         </div>
-        <Award className="h-5 w-5 shrink-0 text-primary" />
       </div>
-      <div className="mt-5">
-        {recognitions.map((recognition) => {
-          const meta = recognitionMeta[recognition.key] || recognitionMeta.consistent;
-          return (
-            <div key={recognition.key} className="flex min-h-[76px] items-center gap-3 border-b border-border/55 py-3 last:border-b-0">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.surface} ${meta.color}`}>
-                {createElement(recognition.unlocked ? meta.icon : LockKeyhole, { className: 'h-4 w-4' })}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase text-muted-foreground">{recognition.title}</p>
-                <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
-                  {recognition.unlocked ? recognition.memberName : 'Still open'}
-                </p>
-                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{recognition.reason}</p>
-              </div>
-              {recognition.unlocked && <Avatar name={recognition.memberName} avatarUrl={recognition.avatarUrl} size="sm" />}
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-4 flex items-center gap-2 rounded-md bg-muted/55 px-3 py-2 text-xs text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--chart-3))]" />
-        Resets every Monday. No private apps, task names, or individual hours are shown.
-      </div>
+      {canManage && <Button variant="outline" size="sm" onClick={onManage}><Settings2 className="mr-2 h-4 w-4" />Manage</Button>}
     </CardContent>
   </Card>
 );
 
-const BadgeCabinet = ({ badges }) => (
-  <section>
-    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="section-header">Collab badges</p>
-        <p className="mt-1 text-sm text-muted-foreground">Shared milestones your Circle earns across the Collab ecosystem.</p>
-      </div>
-      <span className="text-xs font-medium text-muted-foreground">{badges.filter((badge) => badge.earned).length}/{badges.length} unlocked</span>
-    </div>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {badges.map((badge) => {
-        const meta = badgeMeta[badge.key] || badgeMeta['founding-circle'];
-        const progress = Math.min(100, Math.round((badge.progress / badge.goal) * 100));
-        return (
-          <Card key={badge.key} className={`border-border/80 bg-card shadow-ios-sm transition-colors ${badge.earned ? 'border-primary/25' : ''}`}>
-            <CardContent className="p-5">
-              <div className="flex items-start gap-3">
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${badge.earned ? `${meta.surface} ${meta.color}` : 'bg-muted text-muted-foreground'}`}>
-                  {createElement(badge.earned ? meta.icon : LockKeyhole, { className: 'h-5 w-5' })}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{badge.name}</h3>
-                    {badge.earned && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
-                  </div>
-                  <p className="mt-1 min-h-9 text-xs leading-relaxed text-muted-foreground">{badge.description}</p>
-                </div>
-              </div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className={`h-full rounded-full transition-[width] duration-700 ${badge.earned ? 'bg-primary' : 'bg-muted-foreground/35'}`} style={{ width: `${progress}%` }} />
-              </div>
-              <p className="mt-2 text-[11px] font-medium text-muted-foreground">{badge.earned ? 'Earned' : `${badge.progress} of ${badge.goal} toward unlock`}</p>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  </section>
-);
-
-const CircleRoster = ({ members, activeMemberCount, pendingMemberCount }) => (
+const TeamTime = ({ members }) => (
   <Card className="border-border/80 bg-card shadow-ios-sm">
     <CardContent className="p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="section-header">People</p>
-          <p className="mt-1 text-sm text-muted-foreground">{activeMemberCount} active · {pendingMemberCount || 0} invited</p>
-        </div>
-        <span className="font-numeric text-xl font-bold text-foreground">{activeMemberCount + (pendingMemberCount || 0)}<span className="text-sm font-normal text-muted-foreground">/8</span></span>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-4">
+      <p className="section-header">Your people</p>
+      <p className="mt-1 text-sm text-muted-foreground">Time focused this week, in the open.</p>
+      <div className="mt-4 space-y-1">
         {members.map((member) => (
-          <div key={member.userId} className="flex min-w-0 items-center gap-2.5">
+          <div key={member.userId} className="flex min-w-0 items-center gap-3 rounded-lg px-1 py-2">
             <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size="sm" />
-            <div className="min-w-0">
-              <p className="max-w-40 truncate text-sm font-medium text-foreground">{member.displayName}</p>
-              <p className="text-[11px] text-muted-foreground">{member.owner ? 'Owner' : member.status === 'INVITED' ? 'Invitation pending' : 'Circle member'}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">
+                {member.displayName}{member.owner && <span className="ml-1.5 text-xs text-muted-foreground">Founder</span>}
+              </p>
+              <p className="text-[11px] text-muted-foreground">{member.status === 'INVITED' ? 'Invitation pending' : 'Active this week'}</p>
             </div>
+            {member.status !== 'INVITED' && (
+              <span className="font-numeric shrink-0 text-sm font-semibold text-foreground">{formatMinutes(member.focusMinutesThisWeek)}</span>
+            )}
           </div>
         ))}
       </div>
@@ -240,53 +95,161 @@ const CircleRoster = ({ members, activeMemberCount, pendingMemberCount }) => (
   </Card>
 );
 
-const CircleDashboard = ({ circle, canManage, onManage }) => {
-  const averageFocus = circle.activeMemberCount ? Math.round(circle.focusMinutesThisWeek / circle.activeMemberCount) : 0;
-  const averageActiveDays = circle.activeMemberCount ? (circle.activeDaysThisWeek / circle.activeMemberCount).toFixed(1) : '0';
-  const recognitions = circle.weeklyRecognitions?.length ? circle.weeklyRecognitions : getFallbackRecognitions();
-  const badges = circle.ecosystemBadges?.length ? circle.ecosystemBadges : getFallbackBadges(circle);
+const NoteComposer = ({ circleId, onAdded }) => {
+  const { toast } = useToast();
+  const [type, setType] = useState('UPDATE');
+  const [body, setBody] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    try {
+      const note = await circleService.addNote(circleId, { type, body: trimmed });
+      onAdded(note);
+      setBody('');
+    } catch (error) {
+      toast({ title: 'Could not post note', description: error.response?.data?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <Card className="overflow-hidden border-border/80 bg-card shadow-ios-sm">
-        <CardContent className="p-0">
-          <div className="flex flex-col gap-5 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <div className="flex min-w-0 items-center gap-4">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><UsersRound className="h-6 w-6" /></span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="truncate text-xl font-semibold text-foreground">{circle.name}</h2>
-                  <Badge variant="outline" className="border-[hsl(var(--chart-3))]/30 bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]"><LockKeyhole className="mr-1 h-3 w-3" />Private</Badge>
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">A weekly view of what this Circle is moving together.</p>
-              </div>
-            </div>
-            {canManage && <Button variant="outline" size="sm" onClick={onManage}><Settings2 className="mr-2 h-4 w-4" />Manage</Button>}
-          </div>
-          <div className="grid gap-6 px-5 py-6 lg:grid-cols-[145px_minmax(0,1fr)] lg:items-center sm:px-6">
-            <div className="flex items-center justify-center lg:border-r lg:border-border/60">
-              <CircularProgress percentage={circle.collectiveMomentum} size={116} strokeWidth={8} color="orange">
-                <div className="text-center"><p className="font-numeric text-2xl font-bold text-foreground">{circle.collectiveMomentum}%</p><p className="text-[10px] text-muted-foreground">momentum</p></div>
-              </CircularProgress>
-            </div>
-            <div className="grid grid-cols-2 gap-y-5 sm:grid-cols-4">
-              <Metric label="Finished" value={circle.completedTasksThisWeek} detail="collective tasks" icon={CheckCircle2} color="text-[hsl(var(--chart-3))]" />
-              <Metric label="Focused" value={formatMinutes(circle.focusMinutesThisWeek)} detail={`${formatMinutes(averageFocus)} per member`} icon={Flame} color="text-primary" />
-              <Metric label="Consistency" value={averageActiveDays} detail="days per member" icon={Target} color="text-[hsl(var(--chart-1))]" />
-              <Metric label="Reviews" value={circle.quizAttemptsThisWeek} detail="collective attempts" icon={Clock3} color="text-[hsl(var(--chart-4))]" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,.95fr)]">
-        <TeamPulse circle={circle} />
-        <WeeklyRecognitions recognitions={recognitions} />
+    <form onSubmit={submit} className="space-y-2.5">
+      <Textarea
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+        placeholder="Log a bug, an update, an idea, or a question for the team..."
+        className="min-h-20 resize-none text-sm"
+      />
+      <div className="flex items-center justify-between gap-2">
+        <Select value={type} onValueChange={setType}>
+          <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {NOTE_TYPES.map((entry) => (
+              <SelectItem key={entry.value} value={entry.value}>
+                <span className="flex items-center gap-2">{createElement(entry.icon, { className: `h-3.5 w-3.5 ${entry.color}` })}{entry.label}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button type="submit" size="sm" disabled={!body.trim() || saving}>
+          <Send className="mr-1.5 h-3.5 w-3.5" />{saving ? 'Posting...' : 'Post'}
+        </Button>
       </div>
+    </form>
+  );
+};
 
-      <BadgeCabinet badges={badges} />
-      <CircleRoster members={circle.members} activeMemberCount={circle.activeMemberCount} pendingMemberCount={circle.pendingMemberCount} />
+const NoteRow = ({ note, canDelete, onDelete }) => {
+  const meta = noteTypeMeta[note.type] || noteTypeMeta.UPDATE;
+  return (
+    <div className="group flex items-start gap-3 py-3">
+      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${meta.surface} ${meta.color}`}>
+        {createElement(meta.icon, { className: 'h-3.5 w-3.5' })}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-foreground">{note.authorName}</span>
+          <span className={`text-[10px] font-medium uppercase tracking-wide ${meta.color}`}>{meta.label}</span>
+          <span className="text-[10px] text-muted-foreground">{format(new Date(note.createdAt), 'h:mm a')}</span>
+        </div>
+        <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-foreground/90">{note.body}</p>
+      </div>
+      {canDelete && (
+        <button type="button" onClick={() => onDelete(note.id)} title="Delete note" className="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
+  );
+};
+
+const CircleNotes = ({ circleId, currentUserId, isOwner }) => {
+  const { toast } = useToast();
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('ALL');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    circleService.getNotes(circleId)
+      .then((result) => { if (active) setNotes(result); })
+      .catch(() => { if (active) toast({ title: 'Could not load notes', variant: 'destructive' }); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [circleId]);
+
+  const deleteNote = async (noteId) => {
+    setNotes((current) => current.filter((note) => note.id !== noteId));
+    try {
+      await circleService.deleteNote(circleId, noteId);
+    } catch {
+      toast({ title: 'Could not delete note', variant: 'destructive' });
+    }
+  };
+
+  const filtered = filter === 'ALL' ? notes : notes.filter((note) => note.type === filter);
+  const grouped = useMemo(() => {
+    const byDay = new Map();
+    filtered.forEach((note) => {
+      const bucket = byDay.get(note.noteDate) || [];
+      bucket.push(note);
+      byDay.set(note.noteDate, bucket);
+    });
+    return [...byDay.entries()];
+  }, [filtered]);
+
+  return (
+    <Card className="border-border/80 bg-card shadow-ios-sm">
+      <CardContent className="p-5 sm:p-6">
+        <p className="section-header">Notes</p>
+        <p className="mt-1 text-sm text-muted-foreground">A daily log for updates, bugs, ideas, and questions.</p>
+
+        <div className="mt-4"><NoteComposer circleId={circleId} onAdded={(note) => setNotes((current) => [note, ...current])} /></div>
+
+        <div className="mt-5 flex gap-4 border-b border-border/60">
+          {['ALL', ...NOTE_TYPES.map((entry) => entry.value)].map((value) => {
+            const active = filter === value;
+            const label = value === 'ALL' ? 'All' : noteTypeMeta[value].label;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                className={`relative pb-2.5 text-[13px] font-medium transition-colors ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
+              >
+                {label}
+                {active && <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-primary" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {loading ? (
+          <div className="mt-4 space-y-2">{[0, 1, 2].map((key) => <div key={key} className="h-14 animate-pulse rounded-lg bg-muted/50" />)}</div>
+        ) : grouped.length === 0 ? (
+          <p className="mt-6 text-center text-sm text-muted-foreground">Nothing logged yet. Be the first to post.</p>
+        ) : (
+          <div className="mt-1 divide-y divide-border/50">
+            {grouped.map(([day, dayNotes]) => (
+              <div key={day} className="py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{formatNoteDay(day)}</p>
+                <div className="divide-y divide-border/40">
+                  {dayNotes.map((note) => (
+                    <NoteRow key={note.id} note={note} canDelete={note.mine || isOwner} onDelete={deleteNote} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -318,7 +281,7 @@ export const CirclesPage = () => {
     setBusyId(circleId);
     try {
       if (accepted) await circleService.acceptInvitation(circleId); else await circleService.declineInvitation(circleId);
-      toast({ title: accepted ? 'Welcome to the Circle' : 'Invitation declined' });
+      toast({ title: accepted ? 'Welcome to the team' : 'Invitation declined' });
       await load();
     } catch (error) {
       toast({ title: 'Could not update invitation', description: error.response?.data?.message || 'Please try again.', variant: 'destructive' });
@@ -338,19 +301,82 @@ export const CirclesPage = () => {
   return (
     <div className="accent-teal w-full px-4 py-8 sm:py-10">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="eyebrow-label"><UsersRound className="h-3.5 w-3.5 text-primary" />Private circles</p><h1 className="mt-2 text-3xl font-bold text-foreground">Progress, with people you trust.</h1><p className="mt-2 max-w-2xl text-muted-foreground">Shared momentum, meaningful recognition, and no surveillance-style leaderboard.</p></div>
+        <div>
+          <p className="eyebrow-label"><UsersRound className="h-3.5 w-3.5 text-primary" />Private circles</p>
+          <h1 className="mt-2 text-3xl font-bold text-foreground">Your team, in one place.</h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">A private space for the people building this with you — time, notes, and progress, out in the open between you.</p>
+        </div>
         <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Create Circle</Button>
       </div>
 
-      {loading ? <div className="h-[520px] animate-pulse rounded-xl border border-border/80 bg-card" /> : (
+      {loading ? <div className="h-[420px] animate-pulse rounded-xl border border-border/80 bg-card" /> : (
         <div className="space-y-7">
-          {invitations.length > 0 && <section><p className="section-header mb-3"><Clock3 className="h-4 w-4 text-primary" />Circle invitations</p><div className="grid gap-3 md:grid-cols-2">{invitations.map((circle) => <Card key={circle.id} className="border-primary/25 bg-primary/[0.045]"><CardContent className="flex items-center gap-4 p-5"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><UsersRound className="h-5 w-5" /></span><div className="min-w-0 flex-1"><p className="truncate font-semibold text-foreground">{circle.name}</p><p className="mt-1 text-sm text-muted-foreground">{circle.ownerName} invited you to join.</p></div><div className="flex gap-2"><Button size="icon" title="Accept" disabled={busyId === circle.id} onClick={() => respond(circle.id, true)}><Check className="h-4 w-4" /></Button><Button size="icon" title="Decline" variant="outline" disabled={busyId === circle.id} onClick={() => respond(circle.id, false)}><X className="h-4 w-4" /></Button></div></CardContent></Card>)}</div></section>}
+          {invitations.length > 0 && (
+            <section>
+              <p className="section-header mb-3"><Clock3 className="h-4 w-4 text-primary" />Circle invitations</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {invitations.map((circle) => (
+                  <Card key={circle.id} className="border-primary/25 bg-primary/[0.045]">
+                    <CardContent className="flex items-center gap-4 p-5">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><UsersRound className="h-5 w-5" /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-foreground">{circle.name}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{circle.ownerName} invited you to join.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="icon" title="Accept" disabled={busyId === circle.id} onClick={() => respond(circle.id, true)}><Check className="h-4 w-4" /></Button>
+                        <Button size="icon" title="Decline" variant="outline" disabled={busyId === circle.id} onClick={() => respond(circle.id, false)}><X className="h-4 w-4" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
 
-          {activeCircles.length ? <><div className="flex gap-2 overflow-x-auto pb-1">{activeCircles.map((circle) => <button key={circle.id} type="button" onClick={() => setSelectedCircleId(circle.id)} className={`shrink-0 rounded-lg border px-4 py-2.5 text-left transition-all ${selectedCircle?.id === circle.id ? 'border-primary/35 bg-primary/10 text-foreground shadow-ios-sm' : 'border-border/70 bg-card text-muted-foreground hover:text-foreground'}`}><span className="block text-sm font-medium">{circle.name}</span><span className="mt-0.5 block text-[11px]">{circle.collectiveMomentum}% momentum · {circle.activeMemberCount} {circle.activeMemberCount === 1 ? 'person' : 'people'}</span></button>)}</div>{selectedCircle && <CircleDashboard circle={selectedCircle} canManage={selectedCircle.ownerId === user?.id} onManage={() => setManageOpen(true)} />}</> : <div className="rounded-xl border-2 border-dashed border-border/70 py-16 text-center"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><UsersRound className="h-6 w-6" /></span><h2 className="mt-4 text-lg font-semibold text-foreground">Progress feels lighter with people around you.</h2><p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Create a small private Circle and invite friends who want to keep their own promises, together.</p><Button className="mt-5" onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Create your first Circle</Button></div>}
+          {activeCircles.length ? (
+            <>
+              {activeCircles.length > 1 && (
+                <div className="flex gap-4 border-b border-border/60">
+                  {activeCircles.map((circle) => {
+                    const active = selectedCircle?.id === circle.id;
+                    return (
+                      <button
+                        key={circle.id}
+                        type="button"
+                        onClick={() => setSelectedCircleId(circle.id)}
+                        className={`relative pb-2.5 text-sm font-medium transition-colors ${active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
+                      >
+                        {circle.name}
+                        {active && <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-primary" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {selectedCircle && (
+                <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <CircleHeader circle={selectedCircle} canManage={selectedCircle.ownerId === user?.id} onManage={() => setManageOpen(true)} />
+                  <div className="grid gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] lg:items-start">
+                    <TeamTime members={selectedCircle.members} />
+                    <CircleNotes circleId={selectedCircle.id} currentUserId={user?.id} isOwner={selectedCircle.ownerId === user?.id} />
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="rounded-xl border-2 border-dashed border-border/70 py-16 text-center">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><UsersRound className="h-6 w-6" /></span>
+              <h2 className="mt-4 text-lg font-semibold text-foreground">Build this with your team.</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Create a private Circle for the people you're building this with — see time, drop notes, and stay in sync without another tool.</p>
+              <Button className="mt-5" onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />Create your first Circle</Button>
+            </div>
+          )}
         </div>
       )}
 
-      <CreateCircleDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(circle) => { setCircles((current) => [circle, ...current]); setSelectedCircleId(circle.id); setCreateOpen(false); toast({ title: 'Circle created', description: 'Your private progress space is ready.' }); }} />
+      <CreateCircleDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(circle) => { setCircles((current) => [circle, ...current]); setSelectedCircleId(circle.id); setCreateOpen(false); toast({ title: 'Circle created', description: 'Your private team space is ready.' }); }} />
       <ManageCircleDialog circle={selectedCircle} open={manageOpen} onOpenChange={setManageOpen} onUpdated={updateCircle} onDeleted={deleteCircle} />
     </div>
   );

@@ -69,7 +69,7 @@ public class FocusRoom {
 
     private Instant phaseEndsAt;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean paused = false;
 

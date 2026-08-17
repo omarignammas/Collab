@@ -5,9 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.test.backendprojecty.dtos.request.CircleNoteRequest;
 import org.test.backendprojecty.dtos.request.CreateCircleRequest;
 import org.test.backendprojecty.dtos.request.InviteCircleMembersRequest;
 import org.test.backendprojecty.dtos.request.UpdateCircleRequest;
+import org.test.backendprojecty.dtos.response.CircleNoteResponse;
 import org.test.backendprojecty.dtos.response.CircleResponse;
 import org.test.backendprojecty.service.CircleService;
 
@@ -66,6 +68,24 @@ public class CircleController {
     @PostMapping("/{circleId}/decline")
     public ResponseEntity<Void> decline(@PathVariable Long circleId) {
         circleService.decline(circleId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{circleId}/notes")
+    public ResponseEntity<CircleNoteResponse> addNote(
+            @PathVariable Long circleId,
+            @Valid @RequestBody CircleNoteRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(circleService.addNote(circleId, request));
+    }
+
+    @GetMapping("/{circleId}/notes")
+    public ResponseEntity<List<CircleNoteResponse>> listNotes(@PathVariable Long circleId) {
+        return ResponseEntity.ok(circleService.listNotes(circleId));
+    }
+
+    @DeleteMapping("/{circleId}/notes/{noteId}")
+    public ResponseEntity<Void> deleteNote(@PathVariable Long circleId, @PathVariable Long noteId) {
+        circleService.deleteNote(circleId, noteId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -38,6 +38,20 @@ export const circleService = {
   async declineInvitation(circleId) {
     await api.post(`/circles/${circleId}/decline`);
   },
+
+  async getNotes(circleId) {
+    const response = await api.get(`/circles/${circleId}/notes`);
+    return response.data;
+  },
+
+  async addNote(circleId, payload) {
+    const response = await api.post(`/circles/${circleId}/notes`, payload);
+    return response.data;
+  },
+
+  async deleteNote(circleId, noteId) {
+    await api.delete(`/circles/${circleId}/notes/${noteId}`);
+  },
 };
 
 export default circleService;

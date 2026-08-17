@@ -3,17 +3,18 @@ package org.test.backendprojecty.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.test.backendprojecty.dtos.request.CircleNoteRequest;
 import org.test.backendprojecty.dtos.request.CreateCircleRequest;
 import org.test.backendprojecty.dtos.request.UpdateCircleRequest;
-import org.test.backendprojecty.dtos.response.CircleBadgeResponse;
 import org.test.backendprojecty.dtos.response.CircleMemberResponse;
-import org.test.backendprojecty.dtos.response.CircleRecognitionResponse;
+import org.test.backendprojecty.dtos.response.CircleNoteResponse;
 import org.test.backendprojecty.dtos.response.CircleResponse;
 import org.test.backendprojecty.dtos.response.MomentumResponse;
 import org.test.backendprojecty.entity.*;
 import org.test.backendprojecty.exception.BadRequestException;
 import org.test.backendprojecty.exception.ResourceNotFoundException;
 import org.test.backendprojecty.repository.CircleMemberRepository;
+import org.test.backendprojecty.repository.CircleNoteRepository;
 import org.test.backendprojecty.repository.CircleRepository;
 import org.test.backendprojecty.repository.UserRepository;
 import org.test.backendprojecty.security.CurrentUserProvider;
@@ -22,12 +23,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.ToIntFunction;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +34,7 @@ public class CircleService {
 
     private final CircleRepository circleRepository;
     private final CircleMemberRepository circleMemberRepository;
+    private final CircleNoteRepository circleNoteRepository;
     private final UserRepository userRepository;
     private final CurrentUserProvider currentUserProvider;
     private final FriendService friendService;
@@ -210,10 +210,6 @@ public class CircleService {
                 member -> member.getUser().getId(),
                 member -> momentumService.getMomentumForWeek(member.getUser(), currentWeekStart)
         ));
-        Map<Long, MomentumResponse> previousMomentumByUserId = activeMembers.stream().collect(java.util.stream.Collectors.toMap(
-                member -> member.getUser().getId(),
-                member -> momentumService.getMomentumForWeek(member.getUser(), currentWeekStart.minusWeeks(1))
-        ));
         List<MomentumResponse> momentums = new ArrayList<>(momentumByUserId.values());
         int collectiveMomentum = momentums.isEmpty() ? 0 : (int) Math.round(momentums.stream().mapToInt(MomentumResponse::getScore).average().orElse(0));
         int completedTasks = momentums.stream().mapToInt(MomentumResponse::getCompletedTasks).sum();
@@ -234,95 +230,81 @@ public class CircleService {
                 .focusMinutesThisWeek(focusMinutes)
                 .activeDaysThisWeek(activeDays)
                 .quizAttemptsThisWeek(quizAttempts)
-                .weeklyRecognitions(buildRecognitions(activeMembers, momentumByUserId, previousMomentumByUserId))
-                .ecosystemBadges(buildBadges(activeMembers.size(), collectiveMomentum,
-                        completedTasks, focusMinutes, quizAttempts))
                 .members(visibleMembers.stream().map(member -> CircleMemberResponse.builder()
                         .userId(member.getUser().getId())
                         .displayName(displayName(member.getUser()))
                         .avatarUrl(member.getUser().getAvatarUrl())
                         .status(member.getStatus())
                         .owner(circle.getOwner().getId().equals(member.getUser().getId()))
+                        .focusMinutesThisWeek(member.getStatus() == CircleMemberStatus.ACTIVE
+                                ? momentumByUserId.get(member.getUser().getId()).getFocusMinutes() : 0)
                         .build()).toList())
                 .createdAt(circle.getCreatedAt())
                 .build();
     }
 
-    private List<CircleRecognitionResponse> buildRecognitions(
-            List<CircleMember> members,
-            Map<Long, MomentumResponse> current,
-            Map<Long, MomentumResponse> previous
-    ) {
-        return List.of(
-                recognition("consistent", "Most consistent", members,
-                        member -> current.get(member.getUser().getId()).getActiveDays(),
-                        "Kept a steady rhythm across the week."),
-                recognition("teammate", "Best teammate", members,
-                        member -> current.get(member.getUser().getId()).getFocusPoints()
-                                + current.get(member.getUser().getId()).getConsistencyPoints(),
-                        "Showed up reliably for the Circle's rhythm."),
-                recognition("comeback", "Biggest comeback", members,
-                        member -> current.get(member.getUser().getId()).getScore()
-                                - previous.get(member.getUser().getId()).getScore(),
-                        "Made the strongest week-over-week return."),
-                recognition("helpful", "Most helpful", members,
-                        member -> current.get(member.getUser().getId()).getQuizPoints()
-                                + Math.min(10, current.get(member.getUser().getId()).getTaskPoints() / 2),
-                        "Created the strongest learning and support signal."),
-                recognition("finisher", "Strongest finisher", members,
-                        member -> current.get(member.getUser().getId()).getCompletedTasks(),
-                        "Turned the most commitments into finished work.")
-        );
+    @Transactional
+    public CircleNoteResponse addNote(Long circleId, CircleNoteRequest request) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        requireActiveMember(circleId, currentUser.getId());
+        Circle circle = circleRepository.findById(circleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Circle not found"));
+
+        CircleNote note = circleNoteRepository.save(CircleNote.builder()
+                .circle(circle)
+                .author(currentUser)
+                .type(request.getType())
+                .body(request.getBody().trim())
+                .noteDate(LocalDate.now())
+                .build());
+        return toNoteResponse(note, currentUser.getId());
     }
 
-    private CircleRecognitionResponse recognition(
-            String key,
-            String title,
-            List<CircleMember> members,
-            ToIntFunction<CircleMember> score,
-            String reason
-    ) {
-        CircleMember winner = members.stream()
-                .filter(member -> score.applyAsInt(member) > 0)
-                .max(Comparator.comparingInt(score))
-                .orElse(null);
-
-        return CircleRecognitionResponse.builder()
-                .key(key)
-                .title(title)
-                .memberId(winner == null ? null : winner.getUser().getId())
-                .memberName(winner == null ? null : displayName(winner.getUser()))
-                .avatarUrl(winner == null ? null : winner.getUser().getAvatarUrl())
-                .reason(winner == null ? "Waiting for this week's shared signal." : reason)
-                .unlocked(winner != null)
-                .build();
+    @Transactional(readOnly = true)
+    public List<CircleNoteResponse> listNotes(Long circleId) {
+        Long currentUserId = currentUserProvider.getCurrentUser().getId();
+        requireActiveMember(circleId, currentUserId);
+        return circleNoteRepository.findByCircleIdOrderByNoteDateDescCreatedAtDesc(circleId).stream()
+                .map(note -> toNoteResponse(note, currentUserId))
+                .toList();
     }
 
-    private List<CircleBadgeResponse> buildBadges(
-            int activeMembers,
-            int collectiveMomentum,
-            int completedTasks,
-            int focusMinutes,
-            int quizAttempts
-    ) {
-        return List.of(
-                badge("founding-circle", "Founding Circle", "Created a trusted space in Collab.", 1, 1),
-                badge("full-circle", "Full Circle", "Bring three trusted people into the rhythm.", activeMembers, 3),
-                badge("focus-pact", "Focus Pact", "Protect two collective focus hours in one week.", focusMinutes, 120),
-                badge("finish-line", "Finish Line", "Complete five commitments together in one week.", completedTasks, 5),
-                badge("learning-loop", "Learning Loop", "Complete five review sessions in one week.", quizAttempts, 5),
-                badge("momentum-70", "Momentum 70", "Reach 70% collective momentum in one week.", collectiveMomentum, 70)
-        );
+    @Transactional
+    public void deleteNote(Long circleId, Long noteId) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        requireActiveMember(circleId, currentUser.getId());
+        CircleNote note = circleNoteRepository.findById(noteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Note not found"));
+        if (!note.getCircle().getId().equals(circleId)) {
+            throw new ResourceNotFoundException("Note not found");
+        }
+        boolean isAuthor = note.getAuthor().getId().equals(currentUser.getId());
+        boolean isOwner = note.getCircle().getOwner().getId().equals(currentUser.getId());
+        if (!isAuthor && !isOwner) {
+            throw new BadRequestException("Only the author or the Circle owner can delete this note");
+        }
+        circleNoteRepository.delete(note);
     }
 
-    private CircleBadgeResponse badge(String key, String name, String description, int progress, int goal) {
-        return CircleBadgeResponse.builder()
-                .key(key)
-                .name(name)
-                .description(description)
-                .earned(progress >= goal)
-                .progress(Math.min(progress, goal))
-                .goal(goal)
+    private void requireActiveMember(Long circleId, Long userId) {
+        CircleMember membership = circleMemberRepository.findByCircleIdAndUserId(circleId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Circle not found"));
+        if (membership.getStatus() != CircleMemberStatus.ACTIVE) {
+            throw new BadRequestException("You're not an active member of this Circle");
+        }
+    }
+
+    private CircleNoteResponse toNoteResponse(CircleNote note, Long currentUserId) {
+        return CircleNoteResponse.builder()
+                .id(note.getId())
+                .authorId(note.getAuthor().getId())
+                .authorName(displayName(note.getAuthor()))
+                .authorAvatarUrl(note.getAuthor().getAvatarUrl())
+                .type(note.getType())
+                .body(note.getBody())
+                .noteDate(note.getNoteDate())
+                .createdAt(note.getCreatedAt())
+                .mine(note.getAuthor().getId().equals(currentUserId))
                 .build();
     }
 
