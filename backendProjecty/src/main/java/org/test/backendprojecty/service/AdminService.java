@@ -158,6 +158,20 @@ public class AdminService {
     }
 
     @Transactional
+    public UserResponse extendTrial(Long userId) {
+        User user = findUser(userId);
+        if (user.getRole() == Role.ADMIN) {
+            throw new BadRequestException("Admin accounts don't have a trial");
+        }
+
+        user.setEnabled(true);
+        user.setAccountStatus(AccountStatus.APPROVED);
+        user.setTrialExpiresAt(LocalDateTime.now().plusDays(TRIAL_DAYS));
+
+        return toResponse(userRepository.save(user));
+    }
+
+    @Transactional
     public void deleteUser(Long userId) {
         User currentUser = currentUserProvider.getCurrentUser();
         if (currentUser.getId().equals(userId)) {

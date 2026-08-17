@@ -51,6 +51,11 @@ public class AdminController {
         return ResponseEntity.ok(adminService.reactivateUser(userId));
     }
 
+    @PatchMapping("/users/{userId}/extend-trial")
+    public ResponseEntity<UserResponse> extendTrial(@PathVariable Long userId) {
+        return ResponseEntity.ok(adminService.extendTrial(userId));
+    }
+
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
         adminService.deleteUser(userId);

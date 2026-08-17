@@ -28,7 +28,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    // A 403 with no body means Spring Security's JWT filter silently declined
+    // to authenticate the request (expired/invalid token) before it ever
+    // reached our controllers — our own access-denied responses always carry
+    // a `message`, so an empty one here is indistinguishable from an expired
+    // session and should be treated the same as a 401.
+    const isStaleSession = status === 401 || (status === 403 && !error.response?.data?.message);
+    if (isStaleSession) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
