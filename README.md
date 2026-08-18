@@ -17,11 +17,11 @@ Started as a generic project/task manager and evolved into a student-focused stu
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard"/><p align="center"><sub>Dashboard — everything due, at a glance</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Today"/><p align="center"><sub>Today — your next best action, at a glance</sub></p></td>
     <td width="50%"><img src="docs/screenshots/tasks-kanban.png" alt="Kanban board"/><p align="center"><sub>Tasks — drag-and-drop Kanban board</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/courses.png" alt="Courses"/><p align="center"><sub>Courses — per-course progress rings</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/courses.png" alt="Projects"/><p align="center"><sub>Projects — per-course progress rings</sub></p></td>
     <td width="50%"><img src="docs/screenshots/calendar.png" alt="Calendar"/><p align="center"><sub>Calendar — every due date, one month at a time</sub></p></td>
   </tr>
   <tr>
@@ -30,9 +30,13 @@ Started as a generic project/task manager and evolved into a student-focused stu
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/friends.png" alt="Friends"/><p align="center"><sub>Friends — send/accept requests, invite into rooms</sub></p></td>
-    <td width="50%"></td>
+    <td width="50%"><img src="docs/screenshots/circles.png" alt="Circles"/><p align="center"><sub>Circles — a private team space with shared time and a daily notes log</sub></p></td>
   </tr>
 </table>
+
+**Desktop app** — the same account, packaged as a native macOS menu-bar companion (Tauri). A persistent widget follows you outside the browser: a compact focus timer when a Pomodoro session is running, and an expandable panel for tasks, Focus Room chat, and quick notes without switching windows.
+
+<p align="center"><img src="docs/screenshots/widget.png" alt="Desktop widget" width="300"/><br/><sub>Desktop widget — tasks, chat, and notes in a menu-bar panel</sub></p>
 
 The landing page also ships its own animated product tour (`components/landing/ScreensShowcase.jsx`) built from the same design tokens and components as the real app, auto-cycling through the screens above.
 
