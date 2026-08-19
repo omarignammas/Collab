@@ -52,4 +52,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByEnabledTrueAndCreatedAtAfterOrderByCreatedAtAsc(LocalDateTime cutoff);
     long countByAccountStatus(AccountStatus accountStatus);
     List<User> findByAccountStatusIsNull();
+
+    // Rank among approved, non-admin builders — used to mint the display-only
+    // "Builder #N" badge without a dedicated counter column.
+    @Query("""
+            SELECT COUNT(u) FROM User u
+            WHERE u.role <> org.test.backendprojecty.entity.Role.ADMIN
+              AND u.accountStatus = org.test.backendprojecty.entity.AccountStatus.APPROVED
+              AND u.id <= :userId
+            """)
+    long countBuilderRankUpTo(@Param("userId") Long userId);
 }

@@ -4,15 +4,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 import Avatar from './Avatar';
 import userService from '../../services/userService';
+import profileService from '../../services/profileService';
 import { useAuth } from '../../hooks/useAuth';
 
-export const EditProfileDialog = ({ open, onOpenChange }) => {
+export const EditProfileDialog = ({ open, onOpenChange, profile, onProfileUpdated }) => {
   const { user, updateUser } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [mission, setMission] = useState('');
+  const [openToChat, setOpenToChat] = useState(true);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -24,11 +28,13 @@ export const EditProfileDialog = ({ open, onOpenChange }) => {
       setFirstName(user.firstName || '');
       setLastName(user.lastName || '');
       setEmail(user.email || '');
+      setMission(profile?.mission || '');
+      setOpenToChat(profile ? profile.openToChat : true);
       setAvatarFile(null);
       setAvatarPreview(null);
       setError('');
     }
-  }, [open, user]);
+  }, [open, user, profile]);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -52,6 +58,14 @@ export const EditProfileDialog = ({ open, onOpenChange }) => {
       }
       if (latest) {
         updateUser(latest);
+      }
+      const missionChanged = !profile || mission.trim() !== (profile.mission || '') || openToChat !== profile.openToChat;
+      let updatedProfile = null;
+      if (missionChanged) {
+        updatedProfile = await profileService.updateMission({ mission: mission.trim(), openToChat });
+      }
+      if (updatedProfile) {
+        onProfileUpdated?.(updatedProfile);
       }
       onOpenChange(false);
     } catch (err) {
@@ -111,6 +125,32 @@ export const EditProfileDialog = ({ open, onOpenChange }) => {
               <Label htmlFor="edit-email">Email</Label>
               <Input id="edit-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-mission">Mission</Label>
+              <Textarea
+                id="edit-mission"
+                value={mission}
+                onChange={(e) => setMission(e.target.value)}
+                placeholder="What are you building toward? Shown on your profile."
+                maxLength={280}
+                className="min-h-16 resize-none text-sm"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setOpenToChat((value) => !value)}
+              className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-2.5 text-sm transition-colors ${
+                openToChat ? 'border-[hsl(var(--chart-3))]/40 bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))]' : 'border-border/70 text-muted-foreground'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className={`h-1.5 w-1.5 rounded-full ${openToChat ? 'bg-[hsl(var(--chart-3))]' : 'bg-muted-foreground/50'}`} />
+                Open to chat
+              </span>
+              <span className="text-xs font-medium">{openToChat ? 'On' : 'Off'}</span>
+            </button>
           </div>
 
           <DialogFooter>

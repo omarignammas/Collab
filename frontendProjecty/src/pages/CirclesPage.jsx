@@ -1,4 +1,5 @@
 import { createElement, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bug,
   Check,
@@ -70,30 +71,43 @@ const CircleHeader = ({ circle, canManage, onManage }) => (
   </Card>
 );
 
-const TeamTime = ({ members }) => (
-  <Card className="border-border/80 bg-card shadow-ios-sm">
-    <CardContent className="p-5 sm:p-6">
-      <p className="section-header">Your people</p>
-      <p className="mt-1 text-sm text-muted-foreground">Time focused this week, in the open.</p>
-      <div className="mt-4 space-y-1">
-        {members.map((member) => (
-          <div key={member.userId} className="flex min-w-0 items-center gap-3 rounded-lg px-1 py-2">
-            <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size="sm" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">
-                {member.displayName}{member.owner && <span className="ml-1.5 text-xs text-muted-foreground">Founder</span>}
-              </p>
-              <p className="text-[11px] text-muted-foreground">{member.status === 'INVITED' ? 'Invitation pending' : 'Active this week'}</p>
-            </div>
-            {member.status !== 'INVITED' && (
-              <span className="font-numeric shrink-0 text-sm font-semibold text-foreground">{formatMinutes(member.focusMinutesThisWeek)}</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-);
+const TeamTime = ({ members, currentUserId }) => {
+  const navigate = useNavigate();
+  return (
+    <Card className="border-border/80 bg-card shadow-ios-sm">
+      <CardContent className="p-5 sm:p-6">
+        <p className="section-header">Your people</p>
+        <p className="mt-1 text-sm text-muted-foreground">Time focused this week, in the open.</p>
+        <div className="mt-4 space-y-1">
+          {members.map((member) => {
+            const isSelf = member.userId === currentUserId;
+            const canOpenProfile = member.status !== 'INVITED';
+            return (
+              <button
+                type="button"
+                key={member.userId}
+                disabled={!canOpenProfile}
+                onClick={() => navigate(isSelf ? '/profile' : `/profile/${member.userId}`)}
+                className={`flex w-full min-w-0 items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors ${canOpenProfile ? 'hover:bg-muted/50' : 'cursor-default'}`}
+              >
+                <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {member.displayName}{member.owner && <span className="ml-1.5 text-xs text-muted-foreground">Founder</span>}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{member.status === 'INVITED' ? 'Invitation pending' : 'Active this week'}</p>
+                </div>
+                {member.status !== 'INVITED' && (
+                  <span className="font-numeric shrink-0 text-sm font-semibold text-foreground">{formatMinutes(member.focusMinutesThisWeek)}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const NoteComposer = ({ circleId, onAdded }) => {
   const { toast } = useToast();
@@ -359,7 +373,7 @@ export const CirclesPage = () => {
                 <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <CircleHeader circle={selectedCircle} canManage={selectedCircle.ownerId === user?.id} onManage={() => setManageOpen(true)} />
                   <div className="grid gap-5 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] lg:items-start">
-                    <TeamTime members={selectedCircle.members} />
+                    <TeamTime members={selectedCircle.members} currentUserId={user?.id} />
                     <CircleNotes circleId={selectedCircle.id} currentUserId={user?.id} isOwner={selectedCircle.ownerId === user?.id} />
                   </div>
                 </div>

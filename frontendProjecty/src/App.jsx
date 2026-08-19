@@ -52,7 +52,7 @@ const FriendsPage = lazy(() => import('./pages/FriendsPage'));
 const StatsPage = lazy(() => import('./pages/StatsPage'));
 const OverduePage = lazy(() => import('./pages/OverduePage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const BuilderProfilePage = lazy(() => import('./pages/BuilderProfilePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const SummariesPage = lazy(() => import('./pages/SummariesPage'));
 const SummaryDetailPage = lazy(() => import('./pages/SummaryDetailPage'));
@@ -190,7 +190,8 @@ function App() {
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/overdue" element={<OverduePage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/profile" element={<BuilderProfilePage />} />
+              <Route path="/profile/:userId" element={<BuilderProfilePage />} />
               <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
               <Route path="/summaries" element={<SummariesPage />} />
               <Route path="/summaries/:summaryId" element={<SummaryDetailPage />} />

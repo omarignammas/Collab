@@ -54,6 +54,13 @@ public class User {
 
     private String avatarUrl;
 
+    @Column(columnDefinition = "text")
+    private String mission;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Builder.Default
+    private boolean openToChat = true;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Course> courses = new ArrayList<>();

@@ -16,6 +16,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     Page<Course> findByUserIdAndDeletedFalse(Long userId, Pageable pageable);
     Page<Course> findByUserIdAndTermIdAndDeletedFalse(Long userId, Long termId, Pageable pageable);
     boolean existsByTitleAndUserId(String title, Long userId);
+    long countByUserIdAndDeletedFalse(Long userId);
 
     @Query("""
             SELECT DISTINCT c FROM Course c
